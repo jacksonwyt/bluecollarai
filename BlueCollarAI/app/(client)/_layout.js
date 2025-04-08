@@ -1,32 +1,111 @@
-import { Tabs } from 'expo-router';
-import { FontAwesome5, MaterialIcons } from '@expo/vector-icons';
-import { COLORS } from '../theme';
+import React from 'react';
+import { Tabs, Stack } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { View, StyleSheet, Platform } from 'react-native';
+import theme from '../theme';
 
-export default function ClientLayout() {
+// Import BlurView with try/catch to handle potential issues
+let BlurView;
+try {
+  BlurView = require('expo-blur').BlurView;
+} catch (error) {
+  console.warn('expo-blur is not available:', error);
+}
+
+const TabBarIcon = ({ name, color, size, focused }) => (
+  <View style={[styles.iconContainer, focused ? styles.activeIconContainer : null]}>
+    <Ionicons name={name} size={size} color={color} />
+    {focused && <View style={styles.indicator} />}
+  </View>
+);
+
+const TabBarBackground = () => {
+  if (Platform.OS === 'ios' && BlurView) {
+    return (
+      <BlurView 
+        tint="light"
+        intensity={95} 
+        style={StyleSheet.absoluteFill} 
+      />
+    );
+  }
+  return null;
+};
+
+export default function ClientTabLayout() {
   return (
-    <Tabs screenOptions={{
-      tabBarActiveTintColor: COLORS.primary.darkBlue,
-      tabBarInactiveTintColor: COLORS.secondary.gray,
-      headerStyle: {
-        backgroundColor: COLORS.primary.darkBlue,
-      },
-      headerTintColor: COLORS.primary.white,
-    }}>
+    <Stack
+      screenOptions={{
+        headerShown: false,
+      }}
+    >
+      <Stack.Screen name="(tabs)" />
+    </Stack>
+  );
+}
+
+export function TabsLayout() {
+  return (
+    <Tabs
+      screenOptions={{
+        tabBarActiveTintColor: theme.colors.accent.main,
+        tabBarInactiveTintColor: theme.colors.neutral[500],
+        headerStyle: {
+          backgroundColor: theme.colors.primary.main,
+          elevation: 0,
+          shadowOpacity: 0,
+          borderBottomWidth: 0,
+        },
+        headerTintColor: theme.colors.primary.contrast,
+        tabBarStyle: {
+          height: theme.layout.tabBarHeight,
+          borderTopWidth: 0,
+          elevation: 8,
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: -2 },
+          shadowOpacity: 0.15,
+          shadowRadius: 4,
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          paddingBottom: Platform.OS === 'ios' ? 24 : 8,
+          paddingTop: 8,
+          backgroundColor: Platform.OS === 'ios' ? 'transparent' : theme.colors.primary.contrast,
+        },
+        tabBarBackground: TabBarBackground,
+        tabBarItemStyle: {
+          paddingVertical: 5,
+        },
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'My Jobs',
-          tabBarIcon: ({ color }) => (
-            <MaterialIcons name="work" size={24} color={color} />
+          title: 'Dashboard',
+          tabBarLabel: 'Home',
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabBarIcon 
+              name={focused ? "home" : "home-outline"} 
+              size={size} 
+              color={color} 
+              focused={focused} 
+            />
           ),
         }}
       />
       <Tabs.Screen
         name="post-job"
         options={{
-          title: 'Post Job',
-          tabBarIcon: ({ color }) => (
-            <MaterialIcons name="post-add" size={24} color={color} />
+          title: 'Post a Job',
+          tabBarLabel: 'Post Job',
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabBarIcon 
+              name={focused ? "add-circle" : "add-circle-outline"} 
+              size={size} 
+              color={color} 
+              focused={focused} 
+            />
           ),
         }}
       />
@@ -34,8 +113,14 @@ export default function ClientLayout() {
         name="find-workers"
         options={{
           title: 'Find Workers',
-          tabBarIcon: ({ color }) => (
-            <FontAwesome5 name="hard-hat" size={24} color={color} />
+          tabBarLabel: 'Find',
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabBarIcon 
+              name={focused ? "search" : "search-outline"} 
+              size={size} 
+              color={color} 
+              focused={focused} 
+            />
           ),
         }}
       />
@@ -43,21 +128,52 @@ export default function ClientLayout() {
         name="messages"
         options={{
           title: 'Messages',
-          tabBarIcon: ({ color }) => (
-            <MaterialIcons name="message" size={24} color={color} />
+          tabBarLabel: 'Messages',
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabBarIcon 
+              name={focused ? "chatbubble" : "chatbubble-outline"} 
+              size={size} 
+              color={color} 
+              focused={focused} 
+            />
           ),
         }}
       />
       <Tabs.Screen
         name="payment"
         options={{
-          title: 'Payment',
-          tabBarIcon: ({ color }) => (
-            <MaterialIcons name="payment" size={24} color={color} />
+          title: 'Payments',
+          tabBarLabel: 'Payments',
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabBarIcon 
+              name={focused ? "card" : "card-outline"} 
+              size={size} 
+              color={color} 
+              focused={focused} 
+            />
           ),
-          href: null, // Hide from tab bar
         }}
       />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  iconContainer: {
+    width: 52,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activeIconContainer: {
+    transform: [{ scale: 1.1 }],
+  },
+  indicator: {
+    position: 'absolute',
+    bottom: -8,
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: theme.colors.accent.main,
+  }
+});

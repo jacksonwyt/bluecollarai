@@ -1,7 +1,7 @@
 import { View, Text, Animated, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { useState, useRef } from 'react';
 import { MaterialIcons } from '@expo/vector-icons';
-import theme from '../theme';
+import { theme } from '../theme';
 import JobMap from './JobMap';
 import Card from './ui/Card.js';
 
@@ -9,8 +9,11 @@ const { height } = Dimensions.get('window');
 const BOTTOM_SHEET_MIN_HEIGHT = 100;
 const BOTTOM_SHEET_MAX_HEIGHT = height * 0.8;
 
-export const JobListItem = ({ job }) => (
-  <Card style={styles.jobCard}>
+export const JobListItem = ({ job, isSelected, onPress }) => (
+  <Card 
+    style={[styles.jobCard, isSelected && styles.selectedJobCard]} 
+    onPress={onPress}
+  >
     <View style={styles.jobHeader}>
       <View>
         <Text style={styles.jobTitle}>{job.title}</Text>
@@ -27,7 +30,7 @@ export const JobListItem = ({ job }) => (
       
       <View style={styles.jobDetail}>
         <MaterialIcons name="schedule" size={16} color={theme.colors.neutral[600]} />
-        <Text style={styles.jobDetailText}>{job.duration}</Text>
+        <Text style={styles.jobDetailText}>{job.duration || 'Flexible'}</Text>
       </View>
       
       <View style={styles.jobDetail}>
@@ -38,7 +41,7 @@ export const JobListItem = ({ job }) => (
   </Card>
 );
 
-const JobListMapView = ({ jobs }) => {
+const JobListMapView = ({ jobs, selectedJob, onJobSelect }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const animatedValue = useRef(new Animated.Value(BOTTOM_SHEET_MIN_HEIGHT)).current;
 
@@ -55,15 +58,19 @@ const JobListMapView = ({ jobs }) => {
     setIsExpanded(!isExpanded);
   };
 
-  const bottomSheetStyle = {
-    height: animatedValue,
+  const handleJobSelect = (job) => {
+    onJobSelect?.(job);
   };
 
   return (
     <View style={styles.container}>
-      <JobMap jobs={jobs} />
+      <JobMap 
+        jobs={jobs} 
+        selectedJobId={selectedJob?.id}
+        onMarkerPress={handleJobSelect}
+      />
       
-      <Animated.View style={[styles.bottomSheet, bottomSheetStyle]}>
+      <Animated.View style={[styles.bottomSheet, { height: animatedValue }]}>
         <Card variant="glass" style={styles.bottomSheetContent}>
           <View style={styles.handle} />
           
@@ -82,7 +89,11 @@ const JobListMapView = ({ jobs }) => {
             data={jobs}
             keyExtractor={(item) => item.id}
             renderItem={({ item }) => (
-              <JobListItem job={item} />
+              <JobListItem 
+                job={item}
+                isSelected={selectedJob?.id === item.id}
+                onPress={() => handleJobSelect(item)}
+              />
             )}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.listContent}
@@ -127,6 +138,10 @@ const styles = StyleSheet.create({
   },
   jobCard: {
     marginBottom: theme.spacing.sm,
+  },
+  selectedJobCard: {
+    borderColor: theme.colors.primary.main,
+    borderWidth: 2,
   },
   jobHeader: {
     flexDirection: 'row',

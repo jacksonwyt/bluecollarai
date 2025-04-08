@@ -3,7 +3,7 @@ import { StyleSheet, View, Text, TextInput, TouchableOpacity, SafeAreaView, Scro
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import theme, { COLORS, FONTS } from '../theme';
+import { theme } from '../theme';
 import { categories } from '../../api/mockData';
 
 export default function WorkerProfileSetupScreen() {
@@ -47,7 +47,7 @@ export default function WorkerProfileSetupScreen() {
     // In a real app, send this data to the backend
     setTimeout(() => {
       setLoading(false);
-      router.replace('/(worker)');
+      router.replace('/(worker)/(tabs)');
     }, 1000);
   };
 
@@ -59,7 +59,7 @@ export default function WorkerProfileSetupScreen() {
             style={styles.backButton}
             onPress={() => router.back()}
           >
-            <Ionicons name="arrow-back" size={24} color={COLORS.primary.darkBlue} />
+            <Ionicons name="arrow-back" size={24} color={theme.colors.primary.main} />
           </TouchableOpacity>
           
           <Text style={styles.title}>Complete Your Profile</Text>
@@ -71,7 +71,7 @@ export default function WorkerProfileSetupScreen() {
                 <Image source={{ uri: profileImage }} style={styles.profileImage} />
               ) : (
                 <View style={styles.imagePlaceholder}>
-                  <Ionicons name="person" size={50} color={COLORS.secondary.gray} />
+                  <Ionicons name="person" size={50} color={theme.colors.neutral[400]} />
                   <Text style={styles.imagePlaceholderText}>Add Photo</Text>
                 </View>
               )}
@@ -148,7 +148,7 @@ export default function WorkerProfileSetupScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.primary.white,
+    backgroundColor: theme.colors.primary.contrast,
   },
   scrollContent: {
     flexGrow: 1,
@@ -161,14 +161,14 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   title: {
-    fontSize: FONTS.sizes.header,
+    fontSize: theme.typography.size.xl,
     fontWeight: 'bold',
-    color: COLORS.primary.darkBlue,
+    color: theme.colors.primary.main,
     marginBottom: 10,
   },
   subtitle: {
-    fontSize: FONTS.sizes.body,
-    color: COLORS.secondary.gray,
+    fontSize: theme.typography.size.md,
+    color: theme.colors.neutral[500],
     marginBottom: 30,
   },
   profileImageContainer: {
@@ -188,43 +188,43 @@ const styles = StyleSheet.create({
   imagePlaceholder: {
     width: '100%',
     height: '100%',
-    backgroundColor: COLORS.primary.white,
+    backgroundColor: theme.colors.primary.contrast,
     borderWidth: 2,
-    borderColor: COLORS.secondary.gray,
+    borderColor: theme.colors.neutral[300],
     borderRadius: 75,
     borderStyle: 'dashed',
     justifyContent: 'center',
     alignItems: 'center',
   },
   imagePlaceholderText: {
-    color: COLORS.secondary.gray,
+    color: theme.colors.neutral[500],
     marginTop: 5,
   },
   formContainer: {
     marginBottom: 30,
   },
   inputLabel: {
-    fontSize: FONTS.sizes.body,
+    fontSize: theme.typography.size.md,
     fontWeight: 'bold',
-    color: COLORS.primary.darkBlue,
+    color: theme.colors.primary.main,
     marginBottom: 10,
   },
   input: {
     borderWidth: 1,
-    borderColor: COLORS.secondary.gray,
+    borderColor: theme.colors.neutral[300],
     borderRadius: 8,
     paddingHorizontal: 15,
     paddingVertical: 12,
-    fontSize: FONTS.sizes.body,
+    fontSize: theme.typography.size.md,
     marginBottom: 20,
   },
   textArea: {
     borderWidth: 1,
-    borderColor: COLORS.secondary.gray,
+    borderColor: theme.colors.neutral[300],
     borderRadius: 8,
     paddingHorizontal: 15,
     paddingVertical: 12,
-    fontSize: FONTS.sizes.body,
+    fontSize: theme.typography.size.md,
     marginBottom: 20,
     height: 100,
     textAlignVertical: 'top',
@@ -235,34 +235,34 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   skillChip: {
-    backgroundColor: COLORS.primary.white,
+    backgroundColor: theme.colors.primary.contrast,
     borderWidth: 1,
-    borderColor: COLORS.secondary.gray,
+    borderColor: theme.colors.neutral[300],
     borderRadius: 20,
     paddingVertical: 8,
     paddingHorizontal: 15,
     margin: 5,
   },
   selectedSkill: {
-    backgroundColor: COLORS.primary.lightBlue,
-    borderColor: COLORS.primary.lightBlue,
+    backgroundColor: theme.colors.primary.light,
+    borderColor: theme.colors.primary.light,
   },
   skillChipText: {
-    color: COLORS.primary.darkBlue,
+    color: theme.colors.primary.main,
   },
   selectedSkillText: {
-    color: COLORS.primary.white,
+    color: theme.colors.primary.contrast,
   },
   submitButton: {
-    backgroundColor: COLORS.primary.lightBlue,
-    paddingVertical: 15,
+    backgroundColor: theme.colors.primary.main,
     borderRadius: 8,
+    padding: 15,
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 20,
   },
   submitButtonText: {
-    color: COLORS.primary.white,
-    fontSize: FONTS.sizes.body,
+    color: theme.colors.primary.contrast,
+    fontSize: theme.typography.size.md,
     fontWeight: 'bold',
   },
-});
+}); 

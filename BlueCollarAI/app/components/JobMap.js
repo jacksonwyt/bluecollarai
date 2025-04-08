@@ -1,5 +1,5 @@
 import { View, StyleSheet, Dimensions, Platform } from 'react-native';
-import MapView, { Marker, Callout, PROVIDER_GOOGLE } from 'react-native-maps';
+import MapView, { Marker, Callout, PROVIDER_DEFAULT } from 'react-native-maps';
 import { useState, useEffect, useRef } from 'react';
 import * as Location from 'expo-location';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -44,18 +44,14 @@ export default function JobMap({ jobs, onMarkerPress, selectedJobId }) {
       setUserLocation(location.coords);
       setRegion(newRegion);
       
-      // Animate to user location
       mapRef.current?.animateToRegion(newRegion, 1000);
     })();
   }, []);
 
-  // Animate marker when selected
   useEffect(() => {
     if (selectedJobId && markersRef.current[selectedJobId]) {
       const marker = markersRef.current[selectedJobId];
-      marker?.startAnimation?.();
       
-      // Find the job
       const selectedJob = jobs.find(job => job.id === selectedJobId);
       if (selectedJob) {
         mapRef.current?.animateToRegion({
@@ -65,7 +61,6 @@ export default function JobMap({ jobs, onMarkerPress, selectedJobId }) {
           longitudeDelta: 0.01,
         }, 500);
         
-        // Provide haptic feedback
         Haptics.selectionAsync();
       }
     }
@@ -81,14 +76,14 @@ export default function JobMap({ jobs, onMarkerPress, selectedJobId }) {
       <MapView 
         ref={mapRef}
         style={styles.map}
-        provider={PROVIDER_GOOGLE}
+        provider={PROVIDER_DEFAULT}
         initialRegion={region}
         showsUserLocation={true}
         showsMyLocationButton={true}
         showsCompass={true}
-        customMapStyle={theme.mapStyle}
         mapPadding={{ top: 100, right: 0, bottom: 100, left: 0 }}
         onRegionChangeComplete={setRegion}
+        customMapStyle={theme.mapStyle}
       >
         {jobs.map((job) => (
           <Marker
@@ -108,7 +103,7 @@ export default function JobMap({ jobs, onMarkerPress, selectedJobId }) {
               <MaterialIcons 
                 name="work" 
                 size={24} 
-                color={theme.colors.primary.main} 
+                color={selectedJobId === job.id ? theme.colors.primary.contrast : theme.colors.primary.main} 
               />
             </View>
             <Callout>

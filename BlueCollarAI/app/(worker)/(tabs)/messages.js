@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, FlatList, TouchableOpacity, Image, SafeAreaView } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import theme, { COLORS, FONTS } from '../theme';
-import { messages, users, jobs } from '../../api/mockData';
+import theme, { COLORS, FONTS } from '../../theme';
+import { messages, users, jobs } from '../../../api/mockData';
 
 // For demo purposes, we'll assume the current user is worker w1
 const currentUserId = 'w1';

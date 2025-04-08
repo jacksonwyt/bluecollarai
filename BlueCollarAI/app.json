@@ -15,22 +15,14 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "ai.bluecollar.app",
-      "config": {
-        "googleMapsApiKey": "AIzaSyDGP0sDaw5RDjZgLcWI5rZ5d6c2jWM7M-k"
-      }
+      "bundleIdentifier": "ai.bluecollar.app"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#1A2A44"
       },
-      "package": "ai.bluecollar.app",
-      "config": {
-        "googleMaps": {
-          "apiKey": "AIzaSyDGP0sDaw5RDjZgLcWI5rZ5d6c2jWM7M-k"
-        }
-      }
+      "package": "ai.bluecollar.app"
     },
     "web": {
       "bundler": "metro",

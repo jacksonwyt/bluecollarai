@@ -1,8 +1,17 @@
-import { View, Animated, PanResponder, StyleSheet, Dimensions } from 'react-native';
+import { View, Animated, PanResponder, StyleSheet, Dimensions, TouchableOpacity, Text } from 'react-native';
 import { useRef, useEffect, useState } from 'react';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
+import { MaterialIcons } from '@expo/vector-icons';
 import theme from '../../theme';
+
+// Import LinearGradient with try/catch to handle potential issues
+let LinearGradient;
+try {
+  LinearGradient = require('expo-linear-gradient').LinearGradient;
+} catch (error) {
+  console.warn('expo-linear-gradient is not available:', error);
+}
 
 const { height } = Dimensions.get('window');
 const MINIMUM_HEIGHT = theme.layout.bottomSheetHandleHeight;
@@ -13,12 +22,19 @@ const BottomSheet = ({
   isOpen, 
   onClose, 
   snapPoints = ['25%', '50%', '90%'],
-  initialSnapPoint = '25%'
+  initialSnapPoint = '25%',
+  title = '',
+  showHeader = false,
+  closeButton = true,
+  gradient = false,
+  blurBackground = true,
+  onSnapChange
 }) => {
   const [currentSnapPoint, setCurrentSnapPoint] = useState(initialSnapPoint);
   const animatedValue = useRef(new Animated.Value(0)).current;
   const lastGestureDy = useRef(0);
   const velocityY = useRef(0);
+  const backdropOpacity = useRef(new Animated.Value(0)).current;
 
   // Convert snap points to pixel values
   const snapPointsPixels = snapPoints.map(point => {
@@ -56,19 +72,33 @@ const BottomSheet = ({
         point === (height * parseInt(initialSnapPoint) / 100)
       );
       
-      Animated.spring(animatedValue, {
-        toValue: MAXIMUM_HEIGHT - initialHeight,
-        tension: 50,
-        friction: 7,
-        useNativeDriver: true,
-      }).start();
+      Animated.parallel([
+        Animated.spring(animatedValue, {
+          toValue: MAXIMUM_HEIGHT - initialHeight,
+          tension: 50,
+          friction: 7,
+          useNativeDriver: true,
+        }),
+        Animated.timing(backdropOpacity, {
+          toValue: 0.5,
+          duration: 300,
+          useNativeDriver: true,
+        })
+      ]).start();
     } else {
-      Animated.spring(animatedValue, {
-        toValue: MAXIMUM_HEIGHT,
-        tension: 50,
-        friction: 7,
-        useNativeDriver: true,
-      }).start();
+      Animated.parallel([
+        Animated.spring(animatedValue, {
+          toValue: MAXIMUM_HEIGHT,
+          tension: 50,
+          friction: 7,
+          useNativeDriver: true,
+        }),
+        Animated.timing(backdropOpacity, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        })
+      ]).start();
     }
   }, [isOpen]);
 
@@ -85,18 +115,29 @@ const BottomSheet = ({
         const newValue = lastGestureDy.current + dy;
         if (newValue >= 0 && newValue <= MAXIMUM_HEIGHT) {
           animatedValue.setValue(newValue);
+          
+          // Update backdrop opacity based on sheet position
+          const currHeight = MAXIMUM_HEIGHT - newValue;
+          const maxHeight = snapPointsPixels[snapPointsPixels.length - 1];
+          const opacity = Math.min(0.5, (currHeight / maxHeight) * 0.5);
+          backdropOpacity.setValue(opacity);
         }
       },
       onPanResponderRelease: (_, { dy, vy }) => {
         const snapPoint = calculateSnapPoint(lastGestureDy.current + dy, vy);
         const snapPercentage = Math.round((snapPoint / height) * 100) + '%';
-        setCurrentSnapPoint(snapPercentage);
         
-        if (snapPoint === 0) {
+        // Only update and trigger callback if the snap point changed
+        if (snapPercentage !== currentSnapPoint) {
+          setCurrentSnapPoint(snapPercentage);
+          onSnapChange?.(snapPercentage);
+        }
+        
+        if (snapPoint === snapPointsPixels[snapPointsPixels.length - 1]) {
           // Fully expanded
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        } else if (snapPoint === MAXIMUM_HEIGHT) {
-          // Closed
+        } else if (snapPoint === 0 || snapPoint < snapPointsPixels[0] / 2) {
+          // Close if dragged below the minimum snap point
           onClose();
           Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
         } else {
@@ -110,6 +151,14 @@ const BottomSheet = ({
           friction: 7,
           useNativeDriver: true,
         }).start();
+        
+        // Update backdrop opacity
+        const opacity = Math.min(0.5, (snapPoint / MAXIMUM_HEIGHT) * 0.5);
+        Animated.timing(backdropOpacity, {
+          toValue: opacity,
+          duration: 200,
+          useNativeDriver: true,
+        }).start();
       },
     })
   ).current;
@@ -119,9 +168,15 @@ const BottomSheet = ({
     outputRange: [0, MAXIMUM_HEIGHT],
   });
 
-  const overlayOpacity = animatedValue.interpolate({
+  const borderRadius = animatedValue.interpolate({
     inputRange: [0, MAXIMUM_HEIGHT],
-    outputRange: [0.5, 0],
+    outputRange: [theme.borderRadius.xl, 0],
+  });
+
+  // Replace animated width with scale transform
+  const handleIndicatorScale = animatedValue.interpolate({
+    inputRange: [0, MAXIMUM_HEIGHT / 2, MAXIMUM_HEIGHT],
+    outputRange: [1, 0.75, 0.5],
   });
 
   return (
@@ -129,25 +184,119 @@ const BottomSheet = ({
       <Animated.View 
         style={[
           styles.overlay,
-          { opacity: overlayOpacity }
+          { opacity: backdropOpacity }
         ]}
         pointerEvents={isOpen ? 'auto' : 'none'}
-        onTouchEnd={onClose}
-      />
+      >
+        <TouchableOpacity 
+          style={StyleSheet.absoluteFill} 
+          activeOpacity={1}
+          onPress={onClose}
+        />
+      </Animated.View>
       <Animated.View
         style={[
           styles.container,
           {
-            transform: [{ translateY }]
+            transform: [{ translateY }],
+            borderTopLeftRadius: borderRadius,
+            borderTopRightRadius: borderRadius,
           }
         ]}
-        {...panResponder.panHandlers}
       >
-        <View style={styles.content}>
-          <BlurView intensity={80} style={styles.blurContainer}>
-            <View style={styles.handle} />
-            {children}
-          </BlurView>
+        <View 
+          style={styles.content}
+          {...panResponder.panHandlers}
+        >
+          {blurBackground ? (
+            <BlurView intensity={90} style={styles.blurContainer}>
+              {gradient && LinearGradient && (
+                <LinearGradient
+                  colors={theme.colors.primary.gradient}
+                  start={{ x: 0, y: 1 }}
+                  end={{ x: 1, y: 0 }}
+                  style={[StyleSheet.absoluteFill, { opacity: 0.03 }]}
+                />
+              )}
+              <View style={styles.handleContainer}>
+                <Animated.View 
+                  style={[
+                    styles.handle, 
+                    { 
+                      transform: [{ scaleX: handleIndicatorScale }]
+                    }
+                  ]} 
+                />
+              </View>
+              
+              {showHeader && (
+                <View style={styles.header}>
+                  <Text style={styles.title}>{title}</Text>
+                  {closeButton && (
+                    <TouchableOpacity 
+                      onPress={onClose}
+                      style={styles.closeButton}
+                      hitSlop={{ top: 15, right: 15, bottom: 15, left: 15 }}
+                    >
+                      <MaterialIcons 
+                        name="close" 
+                        size={24} 
+                        color={theme.colors.neutral[600]} 
+                      />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+              
+              <View style={styles.childrenContainer}>
+                {children}
+              </View>
+            </BlurView>
+          ) : (
+            <View style={styles.container}>
+              {gradient && LinearGradient && (
+                <LinearGradient
+                  colors={theme.colors.primary.gradient}
+                  start={{ x: 0, y: 1 }}
+                  end={{ x: 1, y: 0 }}
+                  style={[StyleSheet.absoluteFill, { opacity: 0.03 }]}
+                />
+              )}
+              <View style={styles.handleContainer}>
+                <Animated.View 
+                  style={[
+                    styles.handle, 
+                    { 
+                      transform: [{ scaleX: handleIndicatorScale }]
+                    }
+                  ]} 
+                />
+              </View>
+              
+              {showHeader && (
+                <View style={styles.header}>
+                  <Text style={styles.title}>{title}</Text>
+                  {closeButton && (
+                    <TouchableOpacity 
+                      onPress={onClose}
+                      style={styles.closeButton}
+                      hitSlop={{ top: 15, right: 15, bottom: 15, left: 15 }}
+                    >
+                      <MaterialIcons 
+                        name="close" 
+                        size={24} 
+                        color={theme.colors.neutral[600]} 
+                      />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+              
+              <View style={styles.childrenContainer}>
+                {children}
+              </View>
+            </View>
+          )}
         </View>
       </Animated.View>
     </>
@@ -157,7 +306,7 @@ const BottomSheet = ({
 const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: theme.colors.glass.overlay,
+    backgroundColor: theme.colors.neutral[900],
   },
   container: {
     position: 'absolute',
@@ -166,25 +315,52 @@ const styles = StyleSheet.create({
     bottom: 0,
     height: MAXIMUM_HEIGHT,
     backgroundColor: 'transparent',
+    overflow: 'hidden',
   },
   content: {
     flex: 1,
     overflow: 'hidden',
-    borderTopLeftRadius: theme.borderRadius.xl,
-    borderTopRightRadius: theme.borderRadius.xl,
   },
   blurContainer: {
     flex: 1,
-    paddingTop: theme.spacing.sm,
+    backgroundColor: theme.colors.neutral[100],
+  },
+  handleContainer: {
+    width: '100%',
+    paddingVertical: theme.spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   handle: {
-    width: 40,
+    width: 40, // Set a fixed width here
     height: 4,
-    backgroundColor: theme.colors.neutral[300],
+    backgroundColor: theme.colors.neutral[400],
     borderRadius: theme.borderRadius.full,
-    alignSelf: 'center',
-    marginBottom: theme.spacing.md,
   },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: theme.spacing.lg,
+    paddingBottom: theme.spacing.md,
+  },
+  title: {
+    fontSize: theme.typography.size.lg,
+    fontWeight: '600',
+    color: theme.colors.neutral[900],
+  },
+  closeButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.colors.neutral[200],
+  },
+  childrenContainer: {
+    flex: 1,
+    paddingHorizontal: theme.spacing.md,
+  }
 });
 
 export default BottomSheet;

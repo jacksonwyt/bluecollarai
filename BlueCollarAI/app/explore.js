@@ -6,7 +6,8 @@ import {
   Animated, 
   TouchableOpacity, 
   ScrollView,
-  Dimensions
+  Dimensions,
+  SafeAreaView
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -14,7 +15,9 @@ import { theme } from './theme';
 import { mockApiCall } from '../api/mockData';
 import JobListMapView from './components/JobListMapView';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
+const BOTTOM_SHEET_MIN_HEIGHT = 100;
+const BOTTOM_SHEET_MAX_HEIGHT = height * 0.6;
 
 export default function ExploreScreen() {
   const [activeTab, setActiveTab] = useState('jobs');
@@ -22,9 +25,10 @@ export default function ExploreScreen() {
   const [workers, setWorkers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState(null);
+  const [isBottomSheetExpanded, setIsBottomSheetExpanded] = useState(false);
   
   const slideAnim = useRef(new Animated.Value(0)).current;
-  const mapScale = useRef(new Animated.Value(1)).current;
+  const bottomSheetAnim = useRef(new Animated.Value(BOTTOM_SHEET_MIN_HEIGHT)).current;
 
   useEffect(() => {
     const loadData = async () => {
@@ -55,6 +59,16 @@ export default function ExploreScreen() {
     setActiveTab(tab);
   };
 
+  const toggleBottomSheet = () => {
+    Animated.spring(bottomSheetAnim, {
+      toValue: isBottomSheetExpanded ? BOTTOM_SHEET_MIN_HEIGHT : BOTTOM_SHEET_MAX_HEIGHT,
+      tension: 50,
+      friction: 7,
+      useNativeDriver: false,
+    }).start();
+    setIsBottomSheetExpanded(!isBottomSheetExpanded);
+  };
+
   const ItemCard = ({ item, type }) => {
     const isJob = type === 'job';
     const isSelected = selectedItem?.id === item.id;
@@ -67,19 +81,7 @@ export default function ExploreScreen() {
         ]}
         onPress={() => {
           setSelectedItem(item);
-          Animated.spring(mapScale, {
-            toValue: 0.95,
-            tension: 40,
-            friction: 7,
-            useNativeDriver: true
-          }).start(() => {
-            Animated.spring(mapScale, {
-              toValue: 1,
-              tension: 40,
-              friction: 7,
-              useNativeDriver: true
-            }).start();
-          });
+          router.push(isJob ? `/job/${item.id}` : `/worker/${item.id}`);
         }}
       >
         <View style={styles.cardHeader}>
@@ -112,23 +114,27 @@ export default function ExploreScreen() {
               {isJob ? item.location : `${item.jobsCompleted} jobs`}
             </Text>
           </View>
-          <TouchableOpacity 
-            style={styles.actionButton}
-            onPress={() => router.push(isJob ? `/job/${item.id}` : `/worker/${item.id}`)}
-          >
-            <Text style={styles.actionButtonText}>
-              {isJob ? 'Apply' : 'Contact'}
-            </Text>
-          </TouchableOpacity>
         </View>
       </TouchableOpacity>
     );
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Explore</Text>
+        <View style={styles.headerTop}>
+          <TouchableOpacity 
+            style={styles.backButton}
+            onPress={() => router.push('/')}
+          >
+            <MaterialIcons 
+              name="arrow-back" 
+              size={24} 
+              color={theme.colors.primary.contrast} 
+            />
+          </TouchableOpacity>
+          <Text style={styles.title}>Explore</Text>
+        </View>
         <View style={styles.tabContainer}>
           <Animated.View 
             style={[
@@ -171,35 +177,47 @@ export default function ExploreScreen() {
         </View>
       </View>
 
-      <Animated.View style={[styles.mapContainer, { transform: [{ scale: mapScale }] }]}>
+      <View style={styles.mapWrapper}>
         <JobListMapView
           jobs={activeTab === 'jobs' ? jobs : []}
           workers={activeTab === 'workers' ? workers : []}
           selectedItem={selectedItem}
           onItemSelect={setSelectedItem}
         />
-      </Animated.View>
+      </View>
 
-      <ScrollView 
-        style={styles.cardsContainer}
-        showsVerticalScrollIndicator={false}
-      >
-        {loading ? (
-          <View style={styles.centerContent}>
-            <MaterialIcons name="hourglass-empty" size={48} color={theme.colors.neutral[400]} />
-            <Text style={styles.loadingText}>Loading...</Text>
-          </View>
-        ) : (
-          (activeTab === 'jobs' ? jobs : workers).map((item) => (
-            <ItemCard 
-              key={item.id} 
-              item={item} 
-              type={activeTab === 'jobs' ? 'job' : 'worker'} 
-            />
-          ))
-        )}
-      </ScrollView>
-    </View>
+      <Animated.View style={[styles.bottomSheet, { height: bottomSheetAnim }]}>
+        <TouchableOpacity style={styles.bottomSheetHandle} onPress={toggleBottomSheet}>
+          <View style={styles.handle} />
+        </TouchableOpacity>
+        
+        <ScrollView 
+          style={styles.cardsContainer}
+          showsVerticalScrollIndicator={false}
+        >
+          {loading ? (
+            <View style={styles.centerContent}>
+              <MaterialIcons name="hourglass-empty" size={48} color={theme.colors.neutral[400]} />
+              <Text style={styles.loadingText}>Loading...</Text>
+            </View>
+          ) : (
+            activeTab === 'jobs' ? jobs.map((item) => (
+              <ItemCard 
+                key={item.id} 
+                item={item} 
+                type="job"
+              />
+            )) : workers.map((item) => (
+              <ItemCard 
+                key={item.id} 
+                item={item} 
+                type="worker"
+              />
+            ))
+          )}
+        </ScrollView>
+      </Animated.View>
+    </SafeAreaView>
   );
 }
 
@@ -210,20 +228,28 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: theme.spacing.lg,
-    paddingBottom: 0,
+    paddingBottom: theme.spacing.md,
+    zIndex: 1,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: theme.spacing.md,
+  },
+  backButton: {
+    marginRight: theme.spacing.md,
+    padding: theme.spacing.xs,
   },
   title: {
     fontSize: theme.typography.size.xxl,
     fontWeight: 'bold',
     color: theme.colors.primary.contrast,
-    marginBottom: theme.spacing.md,
   },
   tabContainer: {
     flexDirection: 'row',
     backgroundColor: theme.colors.primary.light,
     borderRadius: theme.borderRadius.full,
     padding: theme.spacing.xs,
-    marginBottom: theme.spacing.md,
     position: 'relative',
   },
   tabIndicator: {
@@ -246,19 +272,40 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.size.md,
     fontWeight: '600',
   },
-  mapContainer: {
-    height: 200,
-    margin: theme.spacing.lg,
-    borderRadius: theme.borderRadius.lg,
-    overflow: 'hidden',
+  mapWrapper: {
+    flex: 1,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  bottomSheet: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: theme.colors.neutral[100],
+    borderTopLeftRadius: theme.borderRadius.xl,
+    borderTopRightRadius: theme.borderRadius.xl,
     ...theme.shadows.lg,
+  },
+  bottomSheetHandle: {
+    alignItems: 'center',
+    paddingVertical: theme.spacing.sm,
+  },
+  handle: {
+    width: 40,
+    height: 4,
+    backgroundColor: theme.colors.neutral[300],
+    borderRadius: theme.borderRadius.full,
   },
   cardsContainer: {
     flex: 1,
-    padding: theme.spacing.lg,
+    padding: theme.spacing.md,
   },
   card: {
-    backgroundColor: theme.colors.primary.light,
+    backgroundColor: theme.colors.neutral[100],
     borderRadius: theme.borderRadius.lg,
     padding: theme.spacing.lg,
     marginBottom: theme.spacing.md,
@@ -271,14 +318,15 @@ const styles = StyleSheet.create({
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: theme.spacing.sm,
   },
   cardTitle: {
     fontSize: theme.typography.size.lg,
     fontWeight: '600',
-    color: theme.colors.primary.contrast,
+    color: theme.colors.neutral[900],
     flex: 1,
+    marginRight: theme.spacing.sm,
   },
   badge: {
     paddingHorizontal: theme.spacing.sm,
@@ -292,7 +340,7 @@ const styles = StyleSheet.create({
   },
   cardDescription: {
     fontSize: theme.typography.size.md,
-    color: theme.colors.neutral[300],
+    color: theme.colors.neutral[600],
     marginBottom: theme.spacing.md,
   },
   cardFooter: {
@@ -303,32 +351,21 @@ const styles = StyleSheet.create({
   footerDetail: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: theme.spacing.xs,
   },
   footerText: {
+    marginLeft: theme.spacing.xs,
     fontSize: theme.typography.size.sm,
-    color: theme.colors.neutral[400],
-  },
-  actionButton: {
-    backgroundColor: theme.colors.accent.main,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.borderRadius.full,
-  },
-  actionButtonText: {
-    color: theme.colors.primary.contrast,
-    fontSize: theme.typography.size.sm,
-    fontWeight: '600',
+    color: theme.colors.neutral[600],
   },
   centerContent: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
     padding: theme.spacing.xl,
   },
   loadingText: {
-    marginTop: theme.spacing.sm,
+    marginTop: theme.spacing.md,
     fontSize: theme.typography.size.md,
-    color: theme.colors.neutral[400],
+    color: theme.colors.neutral[600],
   },
 }); 

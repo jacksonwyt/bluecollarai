@@ -34,8 +34,6 @@
     </array>
     <key>CFBundleVersion</key>
     <string>1</string>
-    <key>GMSApiKey</key>
-    <string>AIzaSyDGP0sDaw5RDjZgLcWI5rZ5d6c2jWM7M-k</string>
     <key>LSMinimumSystemVersion</key>
     <string>12.0</string>
     <key>LSRequiresIPhoneOS</key>

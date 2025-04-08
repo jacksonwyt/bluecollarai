@@ -1,9 +1,40 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, SafeAreaView, Alert } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { 
+  StyleSheet, 
+  View, 
+  Text, 
+  ScrollView, 
+  TouchableOpacity, 
+  SafeAreaView, 
+  Alert, 
+  Animated,
+  Image,
+  Dimensions,
+  StatusBar,
+  Platform,
+  Share
+} from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import theme, { COLORS, FONTS } from '../theme';
+import theme from '../theme';
 import { jobs, users } from '../../api/mockData';
+import * as Haptics from 'expo-haptics';
+
+// Import LinearGradient with try/catch to handle potential issues
+let LinearGradient;
+try {
+  LinearGradient = require('expo-linear-gradient').LinearGradient;
+} catch (error) {
+  console.warn('expo-linear-gradient is not available:', error);
+}
+
+// Import BlurView with try/catch to handle potential issues
+let BlurView;
+try {
+  BlurView = require('expo-blur').BlurView;
+} catch (error) {
+  console.warn('expo-blur is not available:', error);
+}
 
 // For demo purposes, we'll assume the current user is worker w1
 const currentUserId = 'w1';
@@ -14,9 +45,18 @@ export default function JobDetailsScreen() {
   const [client, setClient] = useState(null);
   const [hasApplied, setHasApplied] = useState(false);
   const [isAssigned, setIsAssigned] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // Animation values
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
+  const headerHeight = useRef(new Animated.Value(200)).current;
+  const headerOpacity = useRef(new Animated.Value(0)).current;
+  const scrollY = useRef(new Animated.Value(0)).current;
   
   useEffect(() => {
     // Load job details
+    setIsLoading(true);
     const jobData = jobs.find(j => j.id === id);
     if (jobData) {
       setJob(jobData);
@@ -30,10 +70,53 @@ export default function JobDetailsScreen() {
       // Load client details
       const clientData = users.find(u => u.id === jobData.clientId);
       setClient(clientData);
+      
+      // Start animations after data is loaded
+      setTimeout(() => {
+        setIsLoading(false);
+        Animated.parallel([
+          Animated.timing(fadeAnim, {
+            toValue: 1,
+            duration: theme.animation.duration.normal,
+            useNativeDriver: true,
+          }),
+          Animated.timing(slideAnim, {
+            toValue: 0,
+            duration: theme.animation.duration.normal,
+            useNativeDriver: true,
+          }),
+          Animated.timing(headerOpacity, {
+            toValue: 1,
+            duration: theme.animation.duration.normal,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      }, 300);
     }
   }, [id]);
 
+  // Calculate header animations based on scroll
+  const headerTranslate = scrollY.interpolate({
+    inputRange: [0, 150],
+    outputRange: [0, -50],
+    extrapolate: 'clamp',
+  });
+
+  const headerTitleOpacity = scrollY.interpolate({
+    inputRange: [50, 100],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
+
+  const backgroundOpacity = scrollY.interpolate({
+    inputRange: [0, 150],
+    outputRange: [0, 1],
+    extrapolate: 'clamp',
+  });
+
   const handleApply = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    
     // In a real app, this would make an API call
     Alert.alert(
       "Application Submitted",
@@ -46,6 +129,8 @@ export default function JobDetailsScreen() {
   };
 
   const handleMessage = () => {
+    Haptics.selectionAsync();
+    
     if (client) {
       router.push({
         pathname: '/conversation',
@@ -54,16 +139,44 @@ export default function JobDetailsScreen() {
     }
   };
 
+  const handleShare = async () => {
+    Haptics.selectionAsync();
+    
+    try {
+      await Share.share({
+        message: `Check out this job opportunity: ${job.title} - $${job.budget} in ${job.location}`,
+      });
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   const formatDate = (dateString) => {
     const options = { year: 'numeric', month: 'long', day: 'numeric' };
     return new Date(dateString).toLocaleDateString(undefined, options);
   };
   
-  if (!job || !client) {
+  if (isLoading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <Text>Loading job details...</Text>
+      <SafeAreaView style={styles.loadingContainer}>
+        <StatusBar barStyle="light-content" />
+        <View style={styles.loadingContent}>
+          <Animated.View 
+            style={[
+              styles.loadingIndicator,
+              { transform: [{ scale: fadeAnim }] }
+            ]}
+          >
+            <Ionicons name="briefcase-outline" size={40} color={theme.colors.primary.main} />
+          </Animated.View>
+          <Animated.Text 
+            style={[
+              styles.loadingText,
+              { opacity: fadeAnim }
+            ]}
+          >
+            Loading job details...
+          </Animated.Text>
         </View>
       </SafeAreaView>
     );
@@ -71,102 +184,241 @@ export default function JobDetailsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Ionicons name="arrow-back" size={24} color={COLORS.primary.white} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Job Details</Text>
-        </View>
-
-        <View style={styles.jobCard}>
-          <Text style={styles.jobTitle}>{job.title}</Text>
+      <StatusBar barStyle="light-content" />
+      
+      {/* Animated header background */}
+      <Animated.View 
+        style={[
+          styles.headerBackground,
+          {
+            opacity: backgroundOpacity,
+            transform: [{ translateY: headerTranslate }]
+          }
+        ]}
+      >
+        {BlurView ? (
+          <BlurView intensity={80} tint="dark" style={styles.blurView}>
+            <Animated.Text style={[styles.headerTitle, { opacity: headerTitleOpacity }]}>
+              {job.title}
+            </Animated.Text>
+          </BlurView>
+        ) : (
+          <View style={styles.headerBackgroundFallback}>
+            <Animated.Text style={[styles.headerTitle, { opacity: headerTitleOpacity }]}>
+              {job.title}
+            </Animated.Text>
+          </View>
+        )}
+      </Animated.View>
+      
+      <Animated.ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        scrollEventThrottle={16}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: true }
+        )}
+      >
+        {/* Hero section */}
+        <Animated.View 
+          style={[
+            styles.heroSection,
+            { 
+              opacity: headerOpacity,
+              transform: [{ translateY: headerTranslate }] 
+            }
+          ]}
+        >
+          {LinearGradient && (
+            <LinearGradient
+              colors={[theme.colors.primary.dark, theme.colors.primary.main]}
+              style={styles.heroGradient}
+            >
+              <View style={styles.heroContent}>
+                <TouchableOpacity 
+                  style={styles.backButton} 
+                  onPress={() => {
+                    Haptics.selectionAsync();
+                    router.back();
+                  }}
+                >
+                  <Ionicons name="arrow-back" size={24} color={theme.colors.primary.contrast} />
+                </TouchableOpacity>
+                
+                <Text style={styles.jobHeroTitle}>{job.title}</Text>
+                
+                <View style={styles.heroMeta}>
+                  <View style={styles.metaTag}>
+                    <Ionicons name="cash-outline" size={16} color={theme.colors.primary.contrast} />
+                    <Text style={styles.metaTagText}>${job.budget}</Text>
+                  </View>
+                  
+                  <View style={styles.metaTag}>
+                    <Ionicons name="location-outline" size={16} color={theme.colors.primary.contrast} />
+                    <Text style={styles.metaTagText}>{job.location}</Text>
+                  </View>
+                </View>
+              </View>
+            </LinearGradient>
+          )}
+        </Animated.View>
+        
+        {/* Main content */}
+        <Animated.View 
+          style={[
+            styles.mainContent,
+            { 
+              opacity: fadeAnim,
+              transform: [{ translateY: slideAnim }] 
+            }
+          ]}
+        >
+          {/* Status bar */}
+          <View style={styles.statusContainer}>
+            <View style={[styles.statusBadge, getStatusStyle(job.status).badge]}>
+              <Text style={[styles.statusText, getStatusStyle(job.status).text]}>
+                {job.status}
+              </Text>
+            </View>
+            
+            <Text style={styles.datePosted}>
+              Posted: {formatDate(job.datePosted)}
+            </Text>
+            
+            <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
+              <Ionicons name="share-outline" size={22} color={theme.colors.primary.main} />
+            </TouchableOpacity>
+          </View>
           
-          <View style={styles.jobMeta}>
-            <View style={styles.metaItem}>
-              <Ionicons name="cash-outline" size={18} color={COLORS.primary.darkBlue} />
-              <Text style={styles.metaText}>${job.budget}</Text>
+          {/* Job details card */}
+          <View style={styles.jobCard}>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Description</Text>
+              <Text style={styles.description}>{job.description}</Text>
             </View>
             
-            <View style={styles.metaItem}>
-              <Ionicons name="location-outline" size={18} color={COLORS.primary.darkBlue} />
-              <Text style={styles.metaText}>{job.location}</Text>
-            </View>
-            
-            <View style={styles.metaItem}>
-              <Ionicons name="calendar-outline" size={18} color={COLORS.primary.darkBlue} />
-              <Text style={styles.metaText}>Posted: {formatDate(job.datePosted)}</Text>
-            </View>
-            
-            <View style={styles.statusContainer}>
-              <View style={[styles.statusBadge, getStatusStyle(job.status).badge]}>
-                <Text style={[styles.statusText, getStatusStyle(job.status).text]}>
-                  {job.status}
-                </Text>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Category</Text>
+              <View style={styles.categories}>
+                <View style={styles.categoryChip}>
+                  <Ionicons name="construct-outline" size={16} color={theme.colors.primary.contrast} />
+                  <Text style={styles.categoryText}>{job.category}</Text>
+                </View>
               </View>
             </View>
           </View>
           
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Description</Text>
-            <Text style={styles.description}>{job.description}</Text>
-          </View>
-          
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Category</Text>
-            <View style={styles.categoryChip}>
-              <Text style={styles.categoryText}>{job.category}</Text>
-            </View>
-          </View>
-          
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Client</Text>
+          {/* Client card */}
+          <View style={styles.clientCard}>
+            <Text style={styles.sectionTitle}>Client Information</Text>
+            
             <View style={styles.clientContainer}>
               <View style={styles.clientInfo}>
-                <Ionicons name="person" size={24} color={COLORS.primary.darkBlue} />
-                <Text style={styles.clientName}>{client.name}</Text>
+                {client.profilePicture ? (
+                  <Image source={{ uri: client.profilePicture }} style={styles.clientImage} />
+                ) : (
+                  <View style={styles.clientImagePlaceholder}>
+                    <Ionicons name="person" size={24} color={theme.colors.primary.contrast} />
+                  </View>
+                )}
+                <View>
+                  <Text style={styles.clientName}>{client.name}</Text>
+                  <Text style={styles.clientRating}>
+                    <Ionicons name="star" size={14} color="#FFD700" /> 
+                    {client.rating || "4.8"} Rating
+                  </Text>
+                </View>
               </View>
               
               <TouchableOpacity 
                 style={styles.messageButton}
                 onPress={handleMessage}
               >
-                <Ionicons name="chatbubble-outline" size={18} color={COLORS.primary.white} />
-                <Text style={styles.messageButtonText}>Message</Text>
+                <LinearGradient
+                  colors={theme.colors.primary.gradient}
+                  style={styles.messageButtonGradient}
+                >
+                  <Ionicons name="chatbubble-outline" size={18} color={theme.colors.primary.contrast} />
+                  <Text style={styles.messageButtonText}>Message</Text>
+                </LinearGradient>
               </TouchableOpacity>
             </View>
           </View>
-        </View>
-        
-        <View style={styles.applicationsSection}>
-          <Text style={styles.applicationsTitle}>
-            Applications: {job.applications.length}
-          </Text>
-        </View>
-        
-        {job.status === 'Open' && !hasApplied && !isAssigned && (
-          <TouchableOpacity 
-            style={styles.applyButton}
-            onPress={handleApply}
-          >
-            <Text style={styles.applyButtonText}>Apply for this Job</Text>
-          </TouchableOpacity>
-        )}
-        
-        {hasApplied && !isAssigned && (
-          <View style={styles.appliedContainer}>
-            <Ionicons name="checkmark-circle" size={24} color={COLORS.primary.lightBlue} />
-            <Text style={styles.appliedText}>You have applied for this job</Text>
+          
+          <View style={styles.applicationsSection}>
+            <Text style={styles.applicationsTitle}>
+              Applications: <Text style={styles.applicationCount}>{job.applications.length}</Text>
+            </Text>
+            
+            {job.applications.length > 0 && (
+              <View style={styles.applicationAvatars}>
+                {job.applications.slice(0, 3).map((appId, index) => {
+                  const applicant = users.find(u => u.id === appId);
+                  return (
+                    <View key={appId} style={[styles.avatarContainer, { zIndex: 10 - index, marginLeft: index > 0 ? -15 : 0 }]}>
+                      {applicant?.profilePicture ? (
+                        <Image source={{ uri: applicant.profilePicture }} style={styles.avatarImage} />
+                      ) : (
+                        <View style={styles.avatarPlaceholder}>
+                          <Text style={styles.avatarInitial}>{applicant?.name?.charAt(0) || '?'}</Text>
+                        </View>
+                      )}
+                    </View>
+                  );
+                })}
+                
+                {job.applications.length > 3 && (
+                  <View style={[styles.avatarContainer, { marginLeft: -15, backgroundColor: theme.colors.neutral[200] }]}>
+                    <Text style={styles.moreBadge}>+{job.applications.length - 3}</Text>
+                  </View>
+                )}
+              </View>
+            )}
           </View>
-        )}
-        
-        {isAssigned && (
-          <View style={styles.assignedContainer}>
-            <Ionicons name="trophy" size={24} color="#FFD700" />
-            <Text style={styles.assignedText}>You are working on this job</Text>
-          </View>
-        )}
-      </ScrollView>
+          
+          {/* Action buttons */}
+          {job.status === 'Open' && !hasApplied && !isAssigned ? (
+            <TouchableOpacity 
+              style={styles.applyButton}
+              onPress={handleApply}
+            >
+              {LinearGradient ? (
+                <LinearGradient
+                  colors={theme.colors.primary.gradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.applyButtonGradient}
+                >
+                  <Text style={styles.applyButtonText}>Apply for this Job</Text>
+                </LinearGradient>
+              ) : (
+                <Text style={styles.applyButtonText}>Apply for this Job</Text>
+              )}
+            </TouchableOpacity>
+          ) : hasApplied && !isAssigned ? (
+            <View style={styles.appliedContainer}>
+              <View style={styles.statusIndicator}>
+                <Ionicons name="checkmark-circle" size={24} color={theme.colors.success.main} />
+              </View>
+              <View style={styles.statusMessage}>
+                <Text style={styles.statusMessageTitle}>Application Submitted</Text>
+                <Text style={styles.statusMessageSubtitle}>The client will review your profile</Text>
+              </View>
+            </View>
+          ) : isAssigned ? (
+            <View style={styles.assignedContainer}>
+              <View style={styles.statusIndicator}>
+                <Ionicons name="trophy" size={24} color="#FFD700" />
+              </View>
+              <View style={styles.statusMessage}>
+                <Text style={styles.statusMessageTitle}>You're Working on This Job</Text>
+                <Text style={styles.statusMessageSubtitle}>Check messages for coordination</Text>
+              </View>
+            </View>
+          ) : null}
+        </Animated.View>
+      </Animated.ScrollView>
     </SafeAreaView>
   );
 }
@@ -176,120 +428,197 @@ const getStatusStyle = (status) => {
   switch (status) {
     case 'Open':
       return {
-        badge: { backgroundColor: '#D5F5E3' },
-        text: { color: '#27AE60' }
+        badge: { backgroundColor: theme.colors.success.light + '30' },
+        text: { color: theme.colors.success.main }
       };
     case 'In Progress':
       return {
-        badge: { backgroundColor: '#D4E6F1' },
-        text: { color: '#2980B9' }
+        badge: { backgroundColor: theme.colors.accent.light + '30' },
+        text: { color: theme.colors.accent.main }
       };
     case 'Completed':
       return {
-        badge: { backgroundColor: '#FDEBD0' },
-        text: { color: '#F39C12' }
+        badge: { backgroundColor: theme.colors.warning.light + '30' },
+        text: { color: theme.colors.warning.main }
       };
     default:
       return {
-        badge: { backgroundColor: COLORS.secondary.gray },
-        text: { color: COLORS.primary.white }
+        badge: { backgroundColor: theme.colors.neutral[300] },
+        text: { color: theme.colors.neutral[700] }
       };
   }
 };
 
+const { width, height } = Dimensions.get('window');
+const statusBarHeight = Platform.OS === 'ios' ? 0 : StatusBar.currentHeight;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: theme.colors.neutral[100],
   },
-  scrollContent: {
-    paddingBottom: 30,
+  headerBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 60 + statusBarHeight,
+    backgroundColor: theme.colors.primary.main,
+    zIndex: 10,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 15,
-    backgroundColor: COLORS.primary.darkBlue,
+  blurView: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    paddingHorizontal: theme.spacing.lg,
+    paddingBottom: theme.spacing.sm,
   },
-  backButton: {
-    marginRight: 15,
+  headerBackgroundFallback: {
+    flex: 1,
+    backgroundColor: theme.colors.primary.main,
+    justifyContent: 'flex-end',
+    paddingHorizontal: theme.spacing.lg,
+    paddingBottom: theme.spacing.sm,
   },
   headerTitle: {
-    fontSize: FONTS.sizes.subheader,
+    color: theme.colors.primary.contrast,
+    fontSize: theme.typography.size.lg,
     fontWeight: 'bold',
-    color: COLORS.primary.white,
   },
-  jobCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 10,
-    padding: 15,
-    marginBottom: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.18,
-    shadowRadius: 1.0,
-    elevation: 1
+  scrollContent: {
+    paddingBottom: theme.spacing.xxxl,
   },
-  jobTitle: {
-    fontSize: FONTS.sizes.header,
+  heroSection: {
+    height: 200,
+    width: '100%',
+    marginBottom: -theme.spacing.xl,
+  },
+  heroGradient: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  heroContent: {
+    padding: theme.spacing.lg,
+  },
+  backButton: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 10 : statusBarHeight + 10,
+    left: theme.spacing.md,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  jobHeroTitle: {
+    fontSize: theme.typography.size.xxl,
     fontWeight: 'bold',
-    color: COLORS.primary.darkBlue,
-    marginBottom: 15,
+    color: theme.colors.primary.contrast,
+    marginBottom: theme.spacing.sm,
   },
-  jobMeta: {
-    marginBottom: 20,
+  heroMeta: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
   },
-  metaItem: {
+  metaTag: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.sm,
+    borderRadius: theme.borderRadius.full,
+    marginRight: theme.spacing.sm,
+    marginBottom: theme.spacing.xs,
   },
-  metaText: {
-    fontSize: FONTS.sizes.body,
-    color: COLORS.primary.darkBlue,
-    marginLeft: 10,
+  metaTagText: {
+    color: theme.colors.primary.contrast,
+    marginLeft: theme.spacing.xs,
+    fontSize: theme.typography.size.sm,
+  },
+  mainContent: {
+    paddingHorizontal: theme.spacing.lg,
+    paddingTop: theme.spacing.xxxl,
   },
   statusContainer: {
-    marginTop: 5,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: theme.spacing.md,
   },
   statusBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 15,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.full,
   },
   statusText: {
-    fontSize: FONTS.sizes.secondary,
+    fontSize: theme.typography.size.xs,
     fontWeight: 'bold',
+  },
+  datePosted: {
+    fontSize: theme.typography.size.xs,
+    color: theme.colors.neutral[600],
+  },
+  shareButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: theme.colors.glass.light,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...theme.shadows.sm,
+  },
+  jobCard: {
+    backgroundColor: theme.colors.neutral[100],
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.lg,
+    marginBottom: theme.spacing.lg,
+    ...theme.shadows.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.neutral[200],
   },
   section: {
-    borderTopWidth: 1,
-    borderTopColor: '#EAEAEA',
-    paddingTop: 15,
-    marginTop: 15,
+    marginBottom: theme.spacing.lg,
   },
   sectionTitle: {
-    fontSize: FONTS.sizes.subheader,
+    fontSize: theme.typography.size.lg,
     fontWeight: 'bold',
-    color: COLORS.primary.darkBlue,
-    marginBottom: 10,
+    color: theme.colors.primary.dark,
+    marginBottom: theme.spacing.md,
   },
   description: {
-    fontSize: FONTS.sizes.body,
-    color: COLORS.primary.darkBlue,
-    lineHeight: 22,
+    fontSize: theme.typography.size.md,
+    color: theme.colors.neutral[800],
+    lineHeight: theme.typography.lineHeight.relaxed * theme.typography.size.md,
+  },
+  categories: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
   },
   categoryChip: {
-    backgroundColor: COLORS.primary.lightBlue,
-    alignSelf: 'flex-start',
-    paddingHorizontal: 15,
-    paddingVertical: 5,
-    borderRadius: 15,
+    backgroundColor: theme.colors.primary.main,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    borderRadius: theme.borderRadius.full,
+    marginRight: theme.spacing.sm,
+    marginBottom: theme.spacing.sm,
+    ...theme.shadows.sm,
   },
   categoryText: {
-    color: COLORS.primary.white,
-    fontSize: FONTS.sizes.body,
+    color: theme.colors.primary.contrast,
+    fontSize: theme.typography.size.sm,
     fontWeight: '500',
+    marginLeft: theme.spacing.xs,
+  },
+  clientCard: {
+    backgroundColor: theme.colors.neutral[100],
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.lg,
+    marginBottom: theme.spacing.lg,
+    ...theme.shadows.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.neutral[200],
   },
   clientContainer: {
     flexDirection: 'row',
@@ -300,74 +629,174 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  clientImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    marginRight: theme.spacing.md,
+  },
+  clientImagePlaceholder: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: theme.colors.primary.main,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: theme.spacing.md,
+  },
   clientName: {
-    fontSize: FONTS.sizes.body,
-    fontWeight: '500',
-    color: COLORS.primary.darkBlue,
-    marginLeft: 10,
+    fontSize: theme.typography.size.md,
+    fontWeight: '600',
+    color: theme.colors.neutral[900],
+    marginBottom: theme.spacing.xxs,
+  },
+  clientRating: {
+    fontSize: theme.typography.size.sm,
+    color: theme.colors.neutral[600],
   },
   messageButton: {
-    backgroundColor: COLORS.primary.lightBlue,
+    overflow: 'hidden',
+    borderRadius: theme.borderRadius.md,
+    ...theme.shadows.sm,
+  },
+  messageButtonGradient: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 5,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
   },
   messageButtonText: {
-    color: COLORS.primary.white,
-    marginLeft: 5,
+    color: theme.colors.primary.contrast,
+    marginLeft: theme.spacing.xs,
     fontWeight: '500',
   },
   applicationsSection: {
-    padding: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: theme.colors.neutral[100],
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.lg,
+    marginBottom: theme.spacing.lg,
+    ...theme.shadows.sm,
+    borderWidth: 1,
+    borderColor: theme.colors.neutral[200],
   },
   applicationsTitle: {
-    fontSize: FONTS.sizes.body,
-    fontWeight: '500',
-    color: COLORS.secondary.gray,
+    fontSize: theme.typography.size.md,
+    color: theme.colors.neutral[800],
+  },
+  applicationCount: {
+    fontWeight: 'bold',
+    color: theme.colors.primary.main,
+  },
+  applicationAvatars: {
+    flexDirection: 'row',
+  },
+  avatarContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: theme.colors.neutral[100],
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+  },
+  avatarPlaceholder: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: theme.colors.primary.light,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInitial: {
+    color: theme.colors.primary.contrast,
+    fontWeight: 'bold',
+  },
+  moreBadge: {
+    fontSize: theme.typography.size.xs,
+    fontWeight: 'bold',
+    color: theme.colors.primary.main,
+    textAlign: 'center',
+    lineHeight: 36,
   },
   applyButton: {
-    backgroundColor: COLORS.primary.lightBlue,
-    marginHorizontal: 15,
-    paddingVertical: 15,
-    borderRadius: 8,
+    height: 56,
+    borderRadius: theme.borderRadius.full,
+    overflow: 'hidden',
+    ...theme.shadows.md,
+  },
+  applyButtonGradient: {
+    flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   applyButtonText: {
-    color: COLORS.primary.white,
-    fontSize: FONTS.sizes.body,
+    color: theme.colors.primary.contrast,
+    fontSize: theme.typography.size.md,
     fontWeight: 'bold',
+    textAlign: 'center',
+    paddingVertical: theme.spacing.md,
   },
   appliedContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 10,
-    padding: 15,
-  },
-  appliedText: {
-    fontSize: FONTS.sizes.body,
-    color: COLORS.primary.lightBlue,
-    fontWeight: '500',
-    marginLeft: 10,
+    backgroundColor: theme.colors.success.light + '20',
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.lg,
+    marginBottom: theme.spacing.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.success.light,
   },
   assignedContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 10,
-    padding: 15,
+    backgroundColor: theme.colors.warning.light + '20',
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.lg,
+    marginBottom: theme.spacing.lg,
+    borderWidth: 1,
+    borderColor: theme.colors.warning.light,
   },
-  assignedText: {
-    fontSize: FONTS.sizes.body,
-    color: '#F39C12',
-    fontWeight: '500',
-    marginLeft: 10,
+  statusIndicator: {
+    marginRight: theme.spacing.md,
+  },
+  statusMessage: {
+    flex: 1,
+  },
+  statusMessageTitle: {
+    fontSize: theme.typography.size.md,
+    fontWeight: 'bold',
+    color: theme.colors.neutral[900],
+    marginBottom: theme.spacing.xxs,
+  },
+  statusMessageSubtitle: {
+    fontSize: theme.typography.size.sm,
+    color: theme.colors.neutral[700],
   },
   loadingContainer: {
     flex: 1,
+    backgroundColor: theme.colors.neutral[100],
+  },
+  loadingContent: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  loadingIndicator: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: theme.colors.primary.light + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: theme.spacing.md,
+  },
+  loadingText: {
+    fontSize: theme.typography.size.md,
+    color: theme.colors.primary.main,
   },
 });
