@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, FlatList, TouchableOpacity, Image, SafeAreaView } from 'react-native';
+import { StyleSheet, View, Text, FlatList, TouchableOpacity, Image, SafeAreaView, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
-import theme from '../../theme';
+import { useTheme } from '../../theme';
 import { messages, users, jobs } from '../../../api/mockData';
 
 // For demo purposes, assume the current user is worker 'w1'
@@ -37,9 +37,10 @@ const getUniqueConversations = () => {
 };
 
 // Conversation card component
-const ConversationCard = ({ conversation, onPress }) => {
+const ConversationCard = ({ conversation, onPress, theme }) => {
   const partner = users.find(u => u.id === conversation.partnerId);
   const job = jobs.find(j => j.id === conversation.jobId);
+  const styles = getCardStyles(theme);
   
   const messageDate = new Date(conversation.timestamp);
   const today = new Date();
@@ -70,9 +71,11 @@ const ConversationCard = ({ conversation, onPress }) => {
   );
 };
 
-export default function MessagesScreen() {
+const MessagesScreen = () => {
+  const { theme } = useTheme();
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const styles = getScreenStyles(theme);
 
   useEffect(() => {
     const loadConversations = () => {
@@ -112,7 +115,7 @@ export default function MessagesScreen() {
 
       {loading ? (
         <View style={styles.loadingContainer}>
-          <Text>Loading messages...</Text>
+          <ActivityIndicator size="large" color={theme.colors.primary.main} />
         </View>
       ) : (
         <>
@@ -122,7 +125,7 @@ export default function MessagesScreen() {
           </View>
           {conversations.length === 0 ? (
             <View style={styles.emptyState}>
-              <Ionicons name="chatbubble-ellipses-outline" size={48} color="#CBD5E0" />
+              <Ionicons name="chatbubble-ellipses-outline" size={48} color={theme.colors.neutral[400]} />
               <Text style={styles.emptyStateText}>No messages yet</Text>
               <Text style={styles.emptySubtext}>
                 Messages from clients will appear here once you start receiving job inquiries
@@ -136,6 +139,7 @@ export default function MessagesScreen() {
                 <ConversationCard 
                   conversation={item} 
                   onPress={() => navigateToConversation(item.partnerId, item.jobId)}
+                  theme={theme}
                 />
               )}
               contentContainerStyle={styles.listContent}
@@ -145,24 +149,26 @@ export default function MessagesScreen() {
       )}
     </SafeAreaView>
   );
-}
+};
 
-const styles = StyleSheet.create({
+// Generate screen styles
+const getScreenStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F7FAFC',
+    backgroundColor: theme.colors.background.secondary,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
+    borderBottomColor: theme.colors.divider,
+    backgroundColor: theme.colors.background.primary,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: theme.typography.size.xl,
     fontWeight: 'bold',
     color: theme.colors.primary.main,
     flex: 1,
@@ -170,73 +176,24 @@ const styles = StyleSheet.create({
   },
   unreadCard: {
     backgroundColor: theme.colors.primary.main,
-    margin: 16,
-    borderRadius: 12,
-    padding: 20,
+    margin: theme.spacing.lg,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.lg,
+    ...theme.shadows.md,
   },
   unreadLabel: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.7)',
-    marginBottom: 8,
+    fontSize: theme.typography.size.sm,
+    color: theme.colors.primary.contrast + 'aa',
+    marginBottom: theme.spacing.xs,
   },
   unreadCount: {
-    fontSize: 32,
+    fontSize: theme.typography.size.xxxl,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: theme.colors.primary.contrast,
   },
   listContent: {
-    paddingHorizontal: 16,
-    paddingBottom: 20,
-  },
-  conversationCard: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  partnerImage: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    marginRight: 12,
-  },
-  conversationInfo: {
-    flex: 1,
-  },
-  partnerName: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: theme.colors.primary.dark,
-  },
-  jobTitle: {
-    fontSize: 14,
-    color: '#4A5568',
-    marginTop: 4,
-  },
-  lastMessage: {
-    fontSize: 14,
-    color: '#4A5568',
-    marginTop: 4,
-  },
-  timestampContainer: {
-    alignItems: 'flex-end',
-  },
-  timestamp: {
-    fontSize: 12,
-    color: '#A0AEC0',
-  },
-  unreadIndicator: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: theme.colors.primary.main,
-    marginTop: 4,
+    paddingHorizontal: theme.spacing.lg,
+    paddingBottom: theme.spacing.lg,
   },
   loadingContainer: {
     flex: 1,
@@ -246,17 +203,71 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 60,
+    paddingVertical: theme.spacing.xxxl,
   },
   emptyStateText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#A0AEC0',
+    fontSize: theme.typography.size.lg,
+    fontWeight: '500',
+    color: theme.colors.text.secondary,
+    marginTop: theme.spacing.md,
   },
   emptySubtext: {
-    marginTop: 8,
-    fontSize: 14,
-    color: '#A0AEC0',
+    fontSize: theme.typography.size.md,
+    color: theme.colors.text.tertiary,
     textAlign: 'center',
+    marginTop: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.xl,
   },
 });
+
+// Generate card styles
+const getCardStyles = (theme) => StyleSheet.create({
+  conversationCard: {
+    flexDirection: 'row',
+    backgroundColor: theme.colors.background.primary,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+    ...theme.shadows.sm,
+  },
+  partnerImage: {
+    width: 50,
+    height: 50,
+    borderRadius: theme.borderRadius.full,
+    marginRight: theme.spacing.md,
+  },
+  conversationInfo: {
+    flex: 1,
+  },
+  partnerName: {
+    fontSize: theme.typography.size.md,
+    fontWeight: '500',
+    color: theme.colors.text.primary,
+  },
+  jobTitle: {
+    fontSize: theme.typography.size.sm,
+    color: theme.colors.text.secondary,
+    marginTop: theme.spacing.xxs,
+  },
+  lastMessage: {
+    fontSize: theme.typography.size.sm,
+    color: theme.colors.text.tertiary,
+    marginTop: theme.spacing.xs,
+  },
+  timestampContainer: {
+    alignItems: 'flex-end',
+  },
+  timestamp: {
+    fontSize: theme.typography.size.xs,
+    color: theme.colors.text.tertiary,
+  },
+  unreadIndicator: {
+    width: 10,
+    height: 10,
+    borderRadius: theme.borderRadius.full,
+    backgroundColor: theme.colors.primary.main,
+    marginTop: theme.spacing.xs,
+  },
+});
+
+export default MessagesScreen;

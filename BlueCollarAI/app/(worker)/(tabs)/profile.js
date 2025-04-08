@@ -2,15 +2,17 @@ import React from 'react';
 import { StyleSheet, View, Text, Image, ScrollView, TouchableOpacity, SafeAreaView } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { theme } from '../../theme';
+import { useTheme } from '../../theme/index';
 import { users, workerProfiles } from '../../../api/mockData';
-import Button from '../../components/ui/Button';
+import Button from '../../_components/ui/Button';
+import Card from '../../_components/ui/Card';
 
 // For demo purposes, use the first worker in the mock data
 const worker = workerProfiles[0];
 const user = users.find(u => u.id === worker.userId);
 
-const ReviewCard = ({ review }) => {
+const ReviewCard = ({ review, theme }) => {
+  const styles = getReviewCardStyles(theme);
   const client = users.find(u => u.id === review.clientId);
   
   return (
@@ -23,7 +25,6 @@ const ReviewCard = ({ review }) => {
         <View style={styles.reviewerInfo}>
           <Text style={styles.reviewerName}>{client.name}</Text>
           <Text style={styles.reviewDate}>{review.date}</Text>
-          <Text style={styles.reviewText}>{review.text}</Text>
         </View>
         <View style={styles.ratingContainer}>
           {Array(5).fill(0).map((_, i) => (
@@ -36,21 +37,26 @@ const ReviewCard = ({ review }) => {
           ))}
         </View>
       </View>
+      <Text style={styles.reviewText}>{review.text}</Text>
     </View>
   );
 };
 
-export default function WorkerProfileScreen() {
+const WorkerProfileScreen = () => {
+  const { theme } = useTheme();
+  
+  const styles = getProfileScreenStyles(theme);
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Static Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}>
-          <MaterialIcons name="arrow-back" size={24} color={theme.colors.primary.main} />
+          <MaterialIcons name="arrow-back" size={24} color={theme.colors.text.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Profile</Text>
         <TouchableOpacity>
-          <MaterialIcons name="more-vert" size={24} color={theme.colors.primary.main} />
+          <MaterialIcons name="more-vert" size={24} color={theme.colors.text.primary} />
         </TouchableOpacity>
       </View>
 
@@ -114,7 +120,7 @@ export default function WorkerProfileScreen() {
           </View>
         </View>
         {worker.reviews.map((review, index) => (
-          <ReviewCard key={index} review={review} />
+          <ReviewCard key={index} review={review} theme={theme} />
         ))}
 
         {/* Action Buttons */}
@@ -142,199 +148,210 @@ export default function WorkerProfileScreen() {
       </ScrollView>
     </SafeAreaView>
   );
-}
+};
 
-const styles = StyleSheet.create({
+const getReviewCardStyles = (theme) => StyleSheet.create({
+  reviewCard: {
+    backgroundColor: theme.colors.background.primary,
+    marginHorizontal: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.md,
+    ...theme.shadows.sm,
+  },
+  reviewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: theme.spacing.sm,
+  },
+  reviewerImage: {
+    width: 40,
+    height: 40,
+    borderRadius: theme.borderRadius.full,
+    marginRight: theme.spacing.md,
+  },
+  reviewerInfo: {
+    flex: 1,
+  },
+  reviewerName: {
+    fontSize: theme.typography.size.md,
+    fontWeight: '600',
+    color: theme.colors.text.primary,
+  },
+  reviewDate: {
+    fontSize: theme.typography.size.xs,
+    color: theme.colors.text.tertiary,
+  },
+  ratingContainer: {
+    flexDirection: 'row',
+  },
+  reviewText: {
+    fontSize: theme.typography.size.sm,
+    color: theme.colors.text.secondary,
+    lineHeight: theme.typography.lineHeight.normal * theme.typography.size.sm,
+  },
+});
+
+const getProfileScreenStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F7FAFC',
+    backgroundColor: theme.colors.background?.secondary || '#F7FAFC',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    paddingTop: 40,
+    backgroundColor: theme.colors.background.primary,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
+    borderBottomColor: theme.colors.divider,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: theme.typography.size.lg,
     fontWeight: 'bold',
-    color: theme.colors.primary.main,
+    color: theme.colors.text.primary,
     flex: 1,
     textAlign: 'center',
   },
   scrollContent: {
-    paddingBottom: 20,
+    paddingBottom: theme.spacing.lg,
   },
   profileCard: {
     backgroundColor: theme.colors.primary.main,
-    margin: 16,
-    borderRadius: 12,
-    padding: 20,
+    margin: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.lg,
     alignItems: 'center',
+    ...theme.shadows.md,
   },
   profileImage: {
     width: 100,
     height: 100,
-    borderRadius: 50,
-    marginBottom: 16,
+    borderRadius: theme.borderRadius.full,
+    marginBottom: theme.spacing.md,
+    borderWidth: 3,
+    borderColor: theme.colors.primary.contrast + '80',
   },
   name: {
-    fontSize: 24,
+    fontSize: theme.typography.size.xxl,
     fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 8,
+    color: theme.colors.primary.contrast,
+    marginBottom: theme.spacing.sm,
   },
   ratingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   ratingText: {
-    color: '#FFFFFF',
-    marginLeft: 8,
-    fontSize: 16,
+    color: theme.colors.primary.contrast,
+    marginLeft: theme.spacing.sm,
+    fontSize: theme.typography.size.md,
   },
   infoCard: {
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: 16,
-    padding: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
+    backgroundColor: theme.colors.background.primary,
+    marginHorizontal: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    ...theme.shadows.sm,
+    overflow: 'hidden',
+    marginTop: theme.spacing.md,
   },
   infoItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
   },
   infoLabel: {
-    fontSize: 16,
+    fontSize: theme.typography.size.md,
     fontWeight: '500',
-    color: theme.colors.primary.dark,
-    marginLeft: 12,
-    marginRight: 8,
+    color: theme.colors.text.secondary,
+    marginLeft: theme.spacing.md,
+    marginRight: theme.spacing.sm,
   },
   infoValue: {
-    fontSize: 16,
-    color: '#1A2A44',
+    fontSize: theme.typography.size.md,
+    color: theme.colors.text.primary,
     flex: 1,
     textAlign: 'right',
   },
   divider: {
     height: 1,
-    backgroundColor: 'rgba(0,0,0,0.05)',
+    backgroundColor: theme.colors.divider,
+    marginHorizontal: theme.spacing.md,
   },
   skillsContainer: {
-    paddingVertical: 12,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
   },
   skillsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: theme.spacing.sm,
   },
   skillsLabel: {
-    fontSize: 16,
+    fontSize: theme.typography.size.md,
     fontWeight: '500',
-    color: theme.colors.primary.dark,
-    marginLeft: 12,
+    color: theme.colors.text.secondary,
+    marginLeft: theme.spacing.md,
   },
   skillsText: {
-    fontSize: 14,
-    color: '#4A5568',
-    marginLeft: 34,
+    fontSize: theme.typography.size.sm,
+    color: theme.colors.text.primary,
+    marginLeft: theme.spacing.md + 22,
+    lineHeight: theme.typography.lineHeight.normal * theme.typography.size.sm,
   },
   bioContainer: {
-    paddingVertical: 12,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
   },
   bioHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: theme.spacing.sm,
   },
   bioLabel: {
-    fontSize: 16,
+    fontSize: theme.typography.size.md,
     fontWeight: '500',
-    color: theme.colors.primary.dark,
-    marginLeft: 12,
+    color: theme.colors.text.secondary,
+    marginLeft: theme.spacing.md,
   },
   bioText: {
-    fontSize: 14,
-    color: '#4A5568',
-    marginLeft: 34,
-    lineHeight: 20,
+    fontSize: theme.typography.size.sm,
+    color: theme.colors.text.primary,
+    marginLeft: theme.spacing.md + 22,
+    lineHeight: theme.typography.lineHeight.normal * theme.typography.size.sm,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginHorizontal: 16,
-    marginVertical: 16,
+    marginHorizontal: theme.spacing.md,
+    marginTop: theme.spacing.xl,
+    marginBottom: theme.spacing.md,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: theme.typography.size.lg,
     fontWeight: 'bold',
-    color: theme.colors.primary.main,
+    color: theme.colors.text.primary,
   },
   sectionCount: {
-    backgroundColor: theme.colors.primary.light,
-    paddingHorizontal: 10,
-    paddingVertical: 2,
-    borderRadius: 12,
+    backgroundColor: theme.colors.primary.surface,
+    borderRadius: theme.borderRadius.full,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xxs,
   },
   sectionCountText: {
-    color: theme.colors.primary.contrast,
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  reviewCard: {
-    backgroundColor: '#FFFFFF',
-    marginHorizontal: 16,
-    marginBottom: 12,
-    padding: 16,
-    borderRadius: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  reviewHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  reviewerImage: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 12,
-  },
-  reviewerInfo: {
-    flex: 1,
-    marginRight: 12,
-  },
-  reviewerName: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: theme.colors.primary.dark,
-  },
-  reviewDate: {
-    fontSize: 12,
-    color: '#A0AEC0',
-    marginTop: 2,
-  },
-  reviewText: {
-    fontSize: 14,
-    color: '#4A5568',
-    marginTop: 8,
+    fontSize: theme.typography.size.xs,
+    fontWeight: '600',
+    color: theme.colors.primary.main,
   },
   actionsContainer: {
-    marginHorizontal: 16,
-    marginTop: 24,
-    paddingBottom: 20,
+    marginHorizontal: theme.spacing.md,
+    marginTop: theme.spacing.xl,
+    marginBottom: theme.spacing.lg,
   },
 });
+
+export default WorkerProfileScreen;

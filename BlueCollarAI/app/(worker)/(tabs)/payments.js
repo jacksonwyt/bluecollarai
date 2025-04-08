@@ -2,7 +2,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, SafeAreaView } from
 import { useState, useEffect } from 'react';
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { theme } from '../../theme';
+import { useTheme } from '../../theme';
 
 const MOCK_TRANSACTIONS = [
   {
@@ -42,6 +42,7 @@ const MOCK_TRANSACTIONS = [
 ];
 
 export default function WorkerPaymentsScreen() {
+  const { theme } = useTheme();
   const [transactions, setTransactions] = useState([]);
   const [activeTab, setActiveTab] = useState('all');
   const [weeklyEarnings, setWeeklyEarnings] = useState(0);
@@ -72,6 +73,8 @@ export default function WorkerPaymentsScreen() {
     return new Date(dateString).toLocaleDateString(undefined, options);
   };
 
+  const styles = getPaymentScreenStyles(theme);
+
   const renderTransaction = ({ item }) => (
     <View style={styles.transactionCard}>
       <View style={styles.transactionIconContainer}>
@@ -99,11 +102,15 @@ export default function WorkerPaymentsScreen() {
         </Text>
         <View style={[
           styles.statusBadge,
-          item.status === 'completed' ? styles.completedBadge : styles.pendingBadge
+          item.status === 'completed' 
+            ? { backgroundColor: theme.colors.success.surface || 'rgba(16, 185, 129, 0.1)' } 
+            : { backgroundColor: theme.colors.warning.surface || 'rgba(245, 158, 11, 0.1)' }
         ]}>
           <Text style={[
             styles.statusText,
-            item.status === 'completed' ? styles.completedText : styles.pendingText
+            item.status === 'completed' 
+              ? { color: theme.colors.success.main || '#10B981' } 
+              : { color: theme.colors.warning.main || '#F59E0B' }
           ]}>
             {item.status === 'completed' ? 'Completed' : 'Pending'}
           </Text>
@@ -182,7 +189,7 @@ export default function WorkerPaymentsScreen() {
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <MaterialIcons name="account-balance-wallet" size={48} color="#CBD5E0" />
+            <MaterialIcons name="account-balance-wallet" size={48} color={theme.colors.neutral[300]} />
             <Text style={styles.emptyStateText}>No transactions found</Text>
           </View>
         }
@@ -191,203 +198,197 @@ export default function WorkerPaymentsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getPaymentScreenStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F7FAFC',
+    backgroundColor: theme.colors.background?.secondary || '#F7FAFC',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    paddingTop: 40,
+    backgroundColor: theme.colors.background.primary,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
+    borderBottomColor: theme.colors.divider,
   },
   headerBackButton: {
-    padding: 8,
+    padding: theme.spacing.xs,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: theme.typography.size.lg,
     fontWeight: 'bold',
-    color: theme.colors.primary.main,
+    color: theme.colors.text.primary,
     flex: 1,
     textAlign: 'center',
   },
   headerButton: {
-    padding: 8,
+    padding: theme.spacing.xs,
   },
   balanceCard: {
     backgroundColor: theme.colors.primary.main,
-    margin: 16,
-    borderRadius: 12,
-    padding: 20,
+    margin: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.lg,
+    ...theme.shadows.md,
   },
   balanceLabel: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.7)',
-    marginBottom: 8,
+    fontSize: theme.typography.size.sm,
+    color: theme.colors.primary.contrast + 'b3',
+    marginBottom: theme.spacing.xs,
   },
   balanceAmount: {
-    fontSize: 32,
+    fontSize: theme.typography.size.xxxl,
     fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 16,
+    color: theme.colors.primary.contrast,
+    marginBottom: theme.spacing.md,
   },
   withdrawButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: theme.colors.primary.contrast + '33',
     alignSelf: 'flex-start',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    borderRadius: theme.borderRadius.full,
   },
   withdrawButtonText: {
-    color: '#FFFFFF',
+    color: theme.colors.primary.contrast,
     fontWeight: '500',
-    marginRight: 4,
+    marginRight: theme.spacing.xs,
+    fontSize: theme.typography.size.sm,
   },
   earningsOverview: {
     flexDirection: 'row',
-    marginHorizontal: 16,
-    marginBottom: 16,
+    justifyContent: 'space-between',
+    marginHorizontal: theme.spacing.md,
+    marginTop: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
+    gap: theme.spacing.md,
   },
   earningsSummaryCard: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
-    padding: 16,
-    borderRadius: 12,
-    marginHorizontal: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
+    backgroundColor: theme.colors.background.primary,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.md,
+    alignItems: 'center',
+    ...theme.shadows.sm,
   },
   earningsSummaryLabel: {
-    fontSize: 14,
-    color: theme.colors.neutral[600],
-    marginBottom: 4,
+    fontSize: theme.typography.size.xs,
+    color: theme.colors.text.secondary,
+    marginBottom: theme.spacing.xs,
   },
   earningsSummaryAmount: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: theme.colors.primary.main,
+    fontSize: theme.typography.size.lg,
+    fontWeight: '600',
+    color: theme.colors.text.primary,
   },
   tabs: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
-    marginBottom: 16,
+    marginHorizontal: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+    backgroundColor: theme.colors.neutral[200],
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.xs,
   },
   tab: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    marginRight: 8,
-    borderRadius: 20,
-    backgroundColor: '#E2E8F0',
+    flex: 1,
+    paddingVertical: theme.spacing.sm,
+    alignItems: 'center',
+    borderRadius: theme.borderRadius.sm,
   },
   activeTab: {
-    backgroundColor: theme.colors.primary.main,
+    backgroundColor: theme.colors.background.primary,
+    ...theme.shadows.sm,
   },
   tabText: {
-    fontSize: 14,
-    color: '#4A5568',
+    fontSize: theme.typography.size.sm,
+    fontWeight: '500',
+    color: theme.colors.text.secondary,
   },
   activeTabText: {
-    color: '#FFFFFF',
-    fontWeight: '500',
+    color: theme.colors.primary.main,
+    fontWeight: '600',
   },
   transactionsList: {
-    paddingHorizontal: 16,
-    paddingBottom: 20,
+    paddingHorizontal: theme.spacing.md,
+    paddingBottom: theme.spacing.xxl,
   },
   transactionCard: {
+    backgroundColor: theme.colors.background.primary,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.md,
     flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
+    alignItems: 'center',
+    ...theme.shadows.sm,
   },
   transactionIconContainer: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F0F4F8',
-    alignItems: 'center',
+    borderRadius: theme.borderRadius.full,
+    backgroundColor: theme.colors.primary.surface,
     justifyContent: 'center',
-    marginRight: 12,
+    alignItems: 'center',
+    marginRight: theme.spacing.md,
   },
   transactionDetails: {
     flex: 1,
+    marginRight: theme.spacing.sm,
   },
   transactionTitle: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: theme.colors.primary.dark,
-    marginBottom: 4,
+    fontSize: theme.typography.size.md,
+    fontWeight: '600',
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.xxs,
   },
   transactionSubtitle: {
-    fontSize: 14,
-    color: '#4A5568',
-    marginBottom: 4,
+    fontSize: theme.typography.size.sm,
+    color: theme.colors.text.secondary,
+    marginBottom: theme.spacing.xs,
   },
   transactionDate: {
-    fontSize: 12,
-    color: '#A0AEC0',
+    fontSize: theme.typography.size.xs,
+    color: theme.colors.text.tertiary,
   },
   transactionAmountContainer: {
     alignItems: 'flex-end',
   },
   transactionAmount: {
-    fontSize: 16,
+    fontSize: theme.typography.size.md,
     fontWeight: 'bold',
-    color: '#1A2A44',
-    marginBottom: 4,
+    marginBottom: theme.spacing.xs,
   },
   earningAmount: {
     color: theme.colors.success.main,
   },
   withdrawalAmount: {
-    color: theme.colors.primary.main,
+    color: theme.colors.error.main,
   },
   statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  completedBadge: {
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-  },
-  pendingBadge: {
-    backgroundColor: 'rgba(245, 158, 11, 0.1)',
+    borderRadius: theme.borderRadius.full,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xxs,
+    alignSelf: 'flex-start',
   },
   statusText: {
-    fontSize: 12,
+    fontSize: theme.typography.size.xs,
     fontWeight: '500',
   },
-  completedText: {
-    color: '#10B981',
-  },
-  pendingText: {
-    color: '#F59E0B',
-  },
   emptyState: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 60,
+    marginTop: theme.spacing.xxxl,
+    paddingHorizontal: theme.spacing.xl,
   },
   emptyStateText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#A0AEC0',
+    fontSize: theme.typography.size.md,
+    color: theme.colors.text.secondary,
+    marginTop: theme.spacing.md,
+    textAlign: 'center',
   },
 }); 

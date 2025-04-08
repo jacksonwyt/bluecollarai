@@ -10,19 +10,20 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
-import { theme } from '../../theme';
+import { useTheme } from '../../theme';
 import { jobs } from '../../../api/mockData';
 
 // Mock worker ID
 const currentWorkerId = 'w1';
 
 // StatusBadge component
-const StatusBadge = ({ status }) => {
+const StatusBadge = ({ status, theme }) => {
+  const styles = getStatusBadgeStyles(theme);
   const statusStyles = {
-    Applied: { bg: 'rgba(245, 158, 11, 0.1)', text: '#F59E0B' },
-    'In Progress': { bg: 'rgba(59, 130, 246, 0.1)', text: '#3B82F6' },
-    Completed: { bg: 'rgba(16, 185, 129, 0.1)', text: '#10B981' },
-  }[status] || { bg: 'rgba(160, 174, 192, 0.1)', text: '#A0AEC0' };
+    Applied: { bg: theme.colors.warning.surface || 'rgba(245, 158, 11, 0.1)', text: theme.colors.warning.main },
+    'In Progress': { bg: theme.colors.accent.surface || 'rgba(59, 130, 246, 0.1)', text: theme.colors.accent.main },
+    Completed: { bg: theme.colors.success.surface || 'rgba(16, 185, 129, 0.1)', text: theme.colors.success.main },
+  }[status] || { bg: theme.colors.neutral[200] || 'rgba(160, 174, 192, 0.1)', text: theme.colors.neutral[600] || '#A0AEC0' };
 
   return (
     <View style={[styles.statusBadge, { backgroundColor: statusStyles.bg }]}>
@@ -32,7 +33,8 @@ const StatusBadge = ({ status }) => {
 };
 
 // JobCard component
-const JobCard = ({ job, onPress, index }) => {
+const JobCard = ({ job, onPress, index, theme }) => {
+  const styles = getJobCardStyles(theme);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
 
@@ -65,23 +67,23 @@ const JobCard = ({ job, onPress, index }) => {
   return (
     <Animated.View
       style={[
-        styles.transactionCard,
+        styles.jobCard,
         { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
       ]}
     >
       <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
         <View style={styles.jobContent}>
-          <View style={styles.transactionIconContainer}>
+          <View style={styles.jobIconContainer}>
             <MaterialIcons name="work" size={24} color={theme.colors.primary.main} />
           </View>
-          <View style={styles.transactionDetails}>
-            <Text style={styles.transactionTitle}>{job.title}</Text>
-            <Text style={styles.transactionSubtitle}>Client: {job.client || 'N/A'}</Text>
-            <Text style={styles.transactionDate}>{formatDate(job.datePosted)}</Text>
+          <View style={styles.jobDetails}>
+            <Text style={styles.jobTitle}>{job.title}</Text>
+            <Text style={styles.jobSubtitle}>Client: {job.client || 'N/A'}</Text>
+            <Text style={styles.jobDate}>{formatDate(job.datePosted)}</Text>
           </View>
-          <View style={styles.transactionAmountContainer}>
-            <Text style={styles.transactionAmount}>${job.budget}</Text>
-            <StatusBadge status={status} />
+          <View style={styles.jobAmountContainer}>
+            <Text style={styles.jobAmount}>${job.budget}</Text>
+            <StatusBadge status={status} theme={theme} />
           </View>
         </View>
         <View style={styles.jobActions}>
@@ -108,7 +110,8 @@ const JobCard = ({ job, onPress, index }) => {
 };
 
 // FilterTabs component
-const FilterTabs = ({ activeTab, setActiveTab }) => {
+const FilterTabs = ({ activeTab, setActiveTab, theme }) => {
+  const styles = getFilterTabsStyles(theme);
   const tabs = ['Applied', 'In Progress', 'Completed'];
   return (
     <View style={styles.tabs}>
@@ -129,6 +132,7 @@ const FilterTabs = ({ activeTab, setActiveTab }) => {
 
 // Main MyJobsScreen component
 export default function MyJobsScreen() {
+  const { theme } = useTheme();
   const [activeTab, setActiveTab] = useState('Applied');
   const [myJobs, setMyJobs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -173,6 +177,8 @@ export default function MyJobsScreen() {
     (job) => job.assignedWorker === currentWorkerId && job.status === 'Completed'
   ).length;
 
+  const styles = getMyJobsScreenStyles(theme);
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -195,11 +201,11 @@ export default function MyJobsScreen() {
         </Text>
       </View>
 
-      <FilterTabs activeTab={activeTab} setActiveTab={setActiveTab} />
+      <FilterTabs activeTab={activeTab} setActiveTab={setActiveTab} theme={theme} />
 
       {loading ? (
         <View style={styles.emptyState}>
-          <MaterialIcons name="hourglass-empty" size={48} color="#CBD5E0" />
+          <MaterialIcons name="hourglass-empty" size={48} color={theme.colors.neutral[300]} />
           <Text style={styles.emptyStateText}>Loading jobs...</Text>
         </View>
       ) : (
@@ -209,23 +215,24 @@ export default function MyJobsScreen() {
             <JobCard
               job={item}
               index={index}
+              theme={theme}
               onPress={() => router.push(`/job/${item.id}`)}
             />
           )}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.transactionsList}
+          contentContainerStyle={styles.jobsList}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <MaterialIcons name="work-off" size={48} color="#CBD5E0" />
+              <MaterialIcons name="work-off" size={48} color={theme.colors.neutral[300]} />
               <Text style={styles.emptyStateText}>No {activeTab.toLowerCase()} jobs</Text>
               {activeTab === 'Applied' && (
                 <TouchableOpacity
-                  onPress={() => router.push('/explore')}
-                  style={styles.withdrawButton}
+                  onPress={() => router.push('/(worker)/(tabs)/index')}
+                  style={styles.browseButton}
                 >
-                  <Text style={styles.withdrawButtonText}>Browse Available Jobs</Text>
-                  <MaterialIcons name="keyboard-arrow-right" size={20} color="#FFFFFF" />
+                  <Text style={styles.browseButtonText}>Browse Available Jobs</Text>
+                  <MaterialIcons name="keyboard-arrow-right" size={20} color={theme.colors.primary.contrast} />
                 </TouchableOpacity>
               )}
             </View>
@@ -236,134 +243,187 @@ export default function MyJobsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F7FAFC' },
+// Functions to generate styles
+const getStatusBadgeStyles = (theme) => StyleSheet.create({
+  statusBadge: {
+    borderRadius: theme.borderRadius.full,
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xxs,
+    alignSelf: 'flex-start',
+    marginTop: theme.spacing.xs,
+  },
+  statusText: {
+    fontSize: theme.typography.size.xs,
+    fontWeight: '500',
+  },
+});
+
+const getJobCardStyles = (theme) => StyleSheet.create({
+  jobCard: {
+    backgroundColor: theme.colors.background.primary,
+    borderRadius: theme.borderRadius.md,
+    marginHorizontal: theme.spacing.md,
+    marginTop: theme.spacing.md,
+    ...theme.shadows.sm,
+  },
+  jobContent: {
+    flexDirection: 'row',
+    padding: theme.spacing.md,
+    alignItems: 'center',
+  },
+  jobIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: theme.borderRadius.full,
+    backgroundColor: theme.colors.primary.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: theme.spacing.md,
+  },
+  jobDetails: {
+    flex: 1,
+    marginRight: theme.spacing.sm,
+  },
+  jobTitle: {
+    fontSize: theme.typography.size.md,
+    fontWeight: '600',
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.xxs,
+  },
+  jobSubtitle: {
+    fontSize: theme.typography.size.sm,
+    color: theme.colors.text.secondary,
+    marginBottom: theme.spacing.xs,
+  },
+  jobDate: {
+    fontSize: theme.typography.size.xs,
+    color: theme.colors.text.tertiary,
+  },
+  jobAmountContainer: {
+    alignItems: 'flex-end',
+  },
+  jobAmount: {
+    fontSize: theme.typography.size.md,
+    fontWeight: 'bold',
+    color: theme.colors.text.primary,
+  },
+  jobActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingHorizontal: theme.spacing.md,
+    paddingBottom: theme.spacing.sm,
+    marginTop: -theme.spacing.xs,
+    borderTopWidth: 1,
+    borderColor: theme.colors.divider,
+    paddingTop: theme.spacing.sm,
+    gap: theme.spacing.md,
+  },
+  actionIcon: {
+    padding: theme.spacing.xs,
+  },
+});
+
+const getFilterTabsStyles = (theme) => StyleSheet.create({
+  tabs: {
+    flexDirection: 'row',
+    paddingHorizontal: theme.spacing.md,
+    marginTop: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+    borderBottomWidth: 1,
+    borderColor: theme.colors.divider,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: theme.spacing.sm + 2,
+    alignItems: 'center',
+    borderBottomWidth: 2,
+    borderColor: 'transparent',
+  },
+  activeTab: {
+    borderColor: theme.colors.primary.main,
+  },
+  tabText: {
+    fontSize: theme.typography.size.sm,
+    fontWeight: '500',
+    color: theme.colors.text.secondary,
+  },
+  activeTabText: {
+    color: theme.colors.primary.main,
+    fontWeight: '600',
+  },
+});
+
+const getMyJobsScreenStyles = (theme) => StyleSheet.create({
+  container: { 
+    flex: 1, 
+    backgroundColor: theme.colors.background?.secondary || '#F7FAFC' 
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
+    paddingTop: 40,
+    backgroundColor: theme.colors.background.primary,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
+    borderBottomColor: theme.colors.divider,
   },
-  headerBackButton: { padding: 8 },
+  headerBackButton: { padding: theme.spacing.xs },
   headerTitle: {
-    fontSize: 20,
+    fontSize: theme.typography.size.lg,
     fontWeight: 'bold',
-    color: theme.colors.primary.main,
-    flex: 1,
+    color: theme.colors.text.primary,
     textAlign: 'center',
+    flex: 1,
   },
-  headerButton: { padding: 8 },
+  headerButton: { padding: theme.spacing.xs },
   balanceCard: {
     backgroundColor: theme.colors.primary.main,
-    margin: 16,
-    borderRadius: 12,
-    padding: 20,
+    margin: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    padding: theme.spacing.lg,
+    ...theme.shadows.md,
   },
   balanceLabel: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.7)',
-    marginBottom: 8,
+    fontSize: theme.typography.size.sm,
+    color: theme.colors.primary.contrast + 'b3',
+    marginBottom: theme.spacing.xs,
   },
   balanceAmount: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
+    fontSize: theme.typography.size.md,
+    fontWeight: '600',
+    color: theme.colors.primary.contrast,
+    textAlign: 'center',
   },
-  withdrawButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    alignSelf: 'flex-start',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    marginTop: 16,
+  jobsList: {
+    paddingBottom: theme.spacing.xxl,
   },
-  withdrawButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '500',
-    marginRight: 4,
-  },
-  tabs: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    marginBottom: 16,
-  },
-  tab: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    marginRight: 8,
-    borderRadius: 20,
-    backgroundColor: '#E2E8F0',
-  },
-  activeTab: { backgroundColor: theme.colors.primary.main },
-  tabText: { fontSize: 14, color: '#4A5568' },
-  activeTabText: { color: '#FFFFFF', fontWeight: '500' },
-  transactionsList: { paddingHorizontal: 16, paddingBottom: 20 },
-  transactionCard: {
-    backgroundColor: '#FFFFFF',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  jobContent: { flexDirection: 'row', alignItems: 'center' },
-  transactionIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#F0F4F8',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  transactionDetails: { flex: 1 },
-  transactionTitle: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: theme.colors.primary.dark,
-    marginBottom: 4,
-  },
-  transactionSubtitle: {
-    fontSize: 14,
-    color: '#4A5568',
-    marginBottom: 4,
-  },
-  transactionDate: { fontSize: 12, color: '#A0AEC0' },
-  transactionAmountContainer: { alignItems: 'flex-end' },
-  transactionAmount: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1A2A44',
-    marginBottom: 4,
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  statusText: { fontSize: 12, fontWeight: '500' },
-  jobActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    marginTop: 12,
-  },
-  actionIcon: { marginLeft: 12 },
   emptyState: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 60,
+    marginTop: theme.spacing.xxxl,
+    paddingHorizontal: theme.spacing.xl,
   },
   emptyStateText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#A0AEC0',
+    fontSize: theme.typography.size.md,
+    color: theme.colors.text.secondary,
+    marginTop: theme.spacing.md,
+    textAlign: 'center',
+  },
+  browseButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.primary.main,
+    paddingVertical: theme.spacing.sm + 2,
+    paddingHorizontal: theme.spacing.lg,
+    borderRadius: theme.borderRadius.full,
+    marginTop: theme.spacing.lg,
+  },
+  browseButtonText: {
+    color: theme.colors.primary.contrast,
+    fontWeight: '500',
+    marginRight: theme.spacing.xs,
   },
 });

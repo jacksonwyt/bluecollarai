@@ -1,7 +1,6 @@
-import { Dimensions, useColorScheme, Platform } from 'react-native';
-import React, { createContext, useState, useContext, useEffect } from 'react';
-import { StatusBar } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Dimensions, Platform } from 'react-native';
+import React, { createContext, useContext } from 'react';
+import { StatusBar, View } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 
@@ -63,7 +62,7 @@ const lightColors = {
   // Glass effect colors with blur values
   glass: {
     light: 'rgba(255, 255, 255, 0.85)',
-    dark: 'rgba(30, 58, 138, 0.85)',
+    dark: 'rgba(30, 58, 138, 0.85)', // Keep for potential reference? Or remove if strictly light only
     overlay: 'rgba(0, 0, 0, 0.5)',
     blur: {
       light: 15,
@@ -87,89 +86,11 @@ const lightColors = {
   shadow: '#000000',
 };
 
-const darkColors = {
-  // Primary colors with expanded palette - slightly adjusted for dark mode
-  primary: {
-    main: '#3B82F6', // Lighter blue for better visibility
-    light: '#60A5FA',
-    dark: '#1E3A8A',
-    contrast: '#FFFFFF',
-    gradient: ['#2563EB', '#3B82F6'],
-    surface: 'rgba(59, 130, 246, 0.1)'
-  },
-  // Accent colors - same as light
-  accent: {
-    main: '#3B82F6',
-    light: '#60A5FA',
-    dark: '#2563EB',
-    contrast: '#FFFFFF',
-    gradient: ['#3B82F6', '#60A5FA']
-  },
-  // Success states - slightly brighter for dark backgrounds
-  success: {
-    main: '#10B981',
-    light: '#34D399',
-    dark: '#059669',
-    contrast: '#FFFFFF',
-    gradient: ['#10B981', '#34D399']
-  },
-  // Warning states - same as light
-  warning: {
-    main: '#F59E0B',
-    light: '#FBBF24',
-    dark: '#D97706',
-    contrast: '#000000',
-    gradient: ['#F59E0B', '#FBBF24']
-  },
-  // Error states - same as light
-  error: {
-    main: '#EF4444',
-    light: '#F87171',
-    dark: '#DC2626',
-    contrast: '#FFFFFF',
-    gradient: ['#EF4444', '#F87171']
-  },
-  // Neutral colors - inverted for dark mode
-  neutral: {
-    900: '#F9FAFB', // Inverted
-    800: '#F3F4F6',
-    700: '#E5E7EB',
-    600: '#D1D5DB',
-    500: '#9CA3AF',
-    400: '#6B7280',
-    300: '#4B5563',
-    200: '#374151',
-    100: '#1F2937'
-  },
-  // Glass effect colors adjusted for dark mode
-  glass: {
-    light: 'rgba(31, 41, 55, 0.85)',
-    dark: 'rgba(59, 130, 246, 0.85)',
-    overlay: 'rgba(0, 0, 0, 0.7)',
-    blur: {
-      light: 15,
-      medium: 25,
-      heavy: 40
-    }
-  },
-  background: {
-    primary: '#111827',
-    secondary: '#1F2937',
-    tertiary: '#374151',
-  },
-  text: {
-    primary: '#F9FAFB',
-    secondary: '#E5E7EB',
-    tertiary: '#D1D5DB',
-    inverse: '#1F2937',
-  },
-  divider: 'rgba(255, 255, 255, 0.1)',
-  overlay: 'rgba(0, 0, 0, 0.7)',
-  shadow: '#000000',
-};
-
 // Create theme with passed colors
 const createTheme = (colors) => {
+  // Simplified shadow calculation (always assumes light)
+  const shadowOpacity = 0.15; // Example fixed value for light theme
+
   return {
     colors,
     // Typography with custom fonts
@@ -224,7 +145,7 @@ const createTheme = (colors) => {
       xxl: 32,
       full: 9999
     },
-    // Enhanced shadows for depth - adjusted based on dark/light
+    // Enhanced shadows for depth - simplified for light theme
     shadows: {
       none: {
         shadowColor: 'transparent',
@@ -236,28 +157,28 @@ const createTheme = (colors) => {
       sm: {
         shadowColor: colors.shadow,
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: colors === darkColors ? 0.3 : 0.15,
+        shadowOpacity: shadowOpacity, // Simplified
         shadowRadius: 3.0,
         elevation: 2
       },
       md: {
         shadowColor: colors.shadow,
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: colors === darkColors ? 0.35 : 0.2,
+        shadowOpacity: shadowOpacity + 0.05, // Simplified
         shadowRadius: 4.65,
         elevation: 6
       },
       lg: {
         shadowColor: colors.shadow,
         shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: colors === darkColors ? 0.4 : 0.25,
+        shadowOpacity: shadowOpacity + 0.1, // Simplified
         shadowRadius: 8.0,
         elevation: 10
       },
       xl: {
         shadowColor: colors.shadow,
         shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: colors === darkColors ? 0.5 : 0.35,
+        shadowOpacity: shadowOpacity + 0.2, // Simplified
         shadowRadius: 10.0,
         elevation: 15
       }
@@ -294,100 +215,8 @@ const createTheme = (colors) => {
         active: 1.05
       }
     },
-    // Map styles for a cleaner look - adjusted for dark mode
-    mapStyle: colors === darkColors ? 
-    [
-      {
-        featureType: 'all',
-        elementType: 'geometry',
-        stylers: [{ color: '#242f3e' }]
-      },
-      {
-        featureType: 'all',
-        elementType: 'labels.text.fill',
-        stylers: [{ color: '#746855' }]
-      },
-      {
-        featureType: 'all',
-        elementType: 'labels.text.stroke',
-        stylers: [{ color: '#242f3e' }]
-      },
-      {
-        featureType: 'administrative.locality',
-        elementType: 'labels.text.fill',
-        stylers: [{ color: '#d59563' }]
-      },
-      {
-        featureType: 'poi',
-        elementType: 'labels.text.fill',
-        stylers: [{ color: '#d59563' }]
-      },
-      {
-        featureType: 'poi.park',
-        elementType: 'geometry',
-        stylers: [{ color: '#263c3f' }]
-      },
-      {
-        featureType: 'poi.park',
-        elementType: 'labels.text.fill',
-        stylers: [{ color: '#6b9a76' }]
-      },
-      {
-        featureType: 'road',
-        elementType: 'geometry',
-        stylers: [{ color: '#38414e' }]
-      },
-      {
-        featureType: 'road',
-        elementType: 'geometry.stroke',
-        stylers: [{ color: '#212a37' }]
-      },
-      {
-        featureType: 'road',
-        elementType: 'labels.text.fill',
-        stylers: [{ color: '#9ca5b3' }]
-      },
-      {
-        featureType: 'road.highway',
-        elementType: 'geometry',
-        stylers: [{ color: '#746855' }]
-      },
-      {
-        featureType: 'road.highway',
-        elementType: 'geometry.stroke',
-        stylers: [{ color: '#1f2835' }]
-      },
-      {
-        featureType: 'road.highway',
-        elementType: 'labels.text.fill',
-        stylers: [{ color: '#f3d19c' }]
-      },
-      {
-        featureType: 'transit',
-        elementType: 'geometry',
-        stylers: [{ color: '#2f3948' }]
-      },
-      {
-        featureType: 'transit.station',
-        elementType: 'labels.text.fill',
-        stylers: [{ color: '#d59563' }]
-      },
-      {
-        featureType: 'water',
-        elementType: 'geometry',
-        stylers: [{ color: '#17263c' }]
-      },
-      {
-        featureType: 'water',
-        elementType: 'labels.text.fill',
-        stylers: [{ color: '#515c6d' }]
-      },
-      {
-        featureType: 'water',
-        elementType: 'labels.text.stroke',
-        stylers: [{ color: '#17263c' }]
-      }
-    ] : [
+    // Map styles - Simplified to only light theme map style
+    mapStyle: [
       {
         featureType: 'all',
         elementType: 'labels.text.fill',
@@ -432,94 +261,51 @@ const createTheme = (colors) => {
   };
 };
 
-// Create the theme instances
+// Create the theme instance
 const lightTheme = createTheme(lightColors);
-const darkTheme = createTheme(darkColors);
 
-// Create the theme context
+// Create the theme context - Provide lightTheme directly
 const ThemeContext = createContext({
-  theme: lightTheme,
-  isDark: false,
-  toggleTheme: () => {},
-  setTheme: () => {},
+  theme: lightTheme, // Provide static light theme
+  mode: 'light',     // Hardcode mode
+  isLoading: false, // Hardcode isLoading
+  // Remove toggle/set theme functions as they are no longer needed
+  // toggleTheme: () => {},
+  // setTheme: () => {},
 });
 
-// Storage keys
-const THEME_PREFERENCE_KEY = '@bluecollar_theme_preference';
-
-// Theme provider component
+// Simplified Theme provider component
 export const ThemeProvider = ({ children }) => {
-  const deviceTheme = useColorScheme();
-  const [themeMode, setThemeMode] = useState('system'); // 'light', 'dark', or 'system'
-  
-  // Calculate the actual theme based on preference and system
-  const isDark = 
-    themeMode === 'system' 
-      ? deviceTheme === 'dark' 
-      : themeMode === 'dark';
-  
-  const theme = isDark ? darkTheme : lightTheme;
+  // Set status bar style directly for light theme
+  StatusBar.setBarStyle('dark-content');
+  if (Platform.OS === 'android') {
+    StatusBar.setBackgroundColor(lightTheme.colors.background.primary);
+  }
 
-  useEffect(() => {
-    // Load saved theme preference
-    const loadThemePreference = async () => {
-      try {
-        const savedTheme = await AsyncStorage.getItem(THEME_PREFERENCE_KEY);
-        if (savedTheme) {
-          setThemeMode(savedTheme);
-        }
-      } catch (e) {
-        console.warn('Failed to load theme preference', e);
-      }
-    };
-    
-    loadThemePreference();
-  }, []);
-
-  // Toggle between light and dark
-  const toggleTheme = async () => {
-    const newMode = isDark ? 'light' : 'dark';
-    setThemeMode(newMode);
-    
-    try {
-      await AsyncStorage.setItem(THEME_PREFERENCE_KEY, newMode);
-    } catch (e) {
-      console.warn('Failed to save theme preference', e);
-    }
+  // Prepare the context value - Now static
+  const themeContextValue = {
+    theme: lightTheme,
+    mode: 'light',
+    isLoading: false,
+    // No toggle/set functions needed
   };
-  
-  // Set specific theme mode (light, dark, system)
-  const setTheme = async (mode) => {
-    if (['light', 'dark', 'system'].includes(mode)) {
-      setThemeMode(mode);
-      
-      try {
-        await AsyncStorage.setItem(THEME_PREFERENCE_KEY, mode);
-      } catch (e) {
-        console.warn('Failed to save theme preference', e);
-      }
-    }
-  };
-  
-  // Update StatusBar based on theme
-  useEffect(() => {
-    StatusBar.setBarStyle(isDark ? 'light-content' : 'dark-content');
-    if (Platform.OS === 'android') {
-      StatusBar.setBackgroundColor(
-        isDark ? darkColors.background.primary : lightColors.background.primary
-      );
-    }
-  }, [isDark]);
 
   return (
-    <ThemeContext.Provider value={{ theme, isDark, toggleTheme, setTheme, themeMode }}>
+    <ThemeContext.Provider value={themeContextValue}>
       {children}
     </ThemeContext.Provider>
   );
 };
 
-// Custom hook to use the theme context
-export const useTheme = () => useContext(ThemeContext);
+// Adjusted useTheme hook - Context value is now simpler
+export const useTheme = () => {
+  const context = useContext(ThemeContext);
+  if (context === null) {
+    throw new Error('useTheme must be used within a ThemeProvider');
+  }
+  // isLoading is always false now, theme is always lightTheme
+  return context; // Return the static context object { theme, mode, isLoading }
+};
 
 // Export constants for direct imports
 export const COLORS = {
@@ -546,8 +332,9 @@ export const FONTS = {
     secondary: 14,
     small: 12
   },
-  families: lightTheme.typography.fontFamily
+  families: lightTheme.typography.fontFamily // Still based on lightTheme
 };
-// Default theme export is light theme
-export default lightTheme;
+
+// Default export is the simplified ThemeProvider
+export default ThemeProvider;
 

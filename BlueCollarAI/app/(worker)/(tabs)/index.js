@@ -1,65 +1,200 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, Animated, TouchableOpacity, FlatList, Dimensions } from 'react-native';
+import { StyleSheet, View, Text, Animated, TouchableOpacity, FlatList, Dimensions, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
-import { theme } from '../../theme';
+import { useTheme } from '../../theme/index';
 import { mockApiCall } from '../../../api/mockData';
-import Header from '../../components/ui/Header.js';
-import Card from '../../components/ui/Card.js';
-import Button from '../../components/ui/Button.js';
-import JobListMapView from '../../components/JobListMapView';
-import BottomSheet from '../../components/ui/BottomSheet.js';
-import JobFilters from '../../components/JobFilters';
+import Header from '../../_components/ui/Header';
+import Card from '../../_components/ui/Card';
+import Button from '../../_components/ui/Button';
+import JobListMapView from '../../_components/JobListMapView';
+import BottomSheet from '../../_components/ui/BottomSheet';
+import JobFilters from '../../_components/JobFilters';
 
 const { width } = Dimensions.get('window');
 
-// Job card component to display job listings
-const JobCard = ({ job, onPress }) => {
+// Function to generate styles for JobCard (moved definition)
+const getJobCardStyles = (theme) => StyleSheet.create({
+  jobCard: {
+    backgroundColor: theme.colors.background.primary,
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.md,
+    borderWidth: 1,
+    borderColor: theme.colors.neutral[200],
+  },
+  selectedJobCard: {
+    borderColor: theme.colors.accent.main,
+    borderWidth: 2,
+  },
+  jobHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: theme.spacing.sm,
+  },
+  jobTitle: {
+    fontSize: theme.typography.size.md,
+    fontWeight: 'bold',
+    color: theme.colors.text.primary,
+    flexShrink: 1, // Prevent long titles pushing budget off
+    marginRight: theme.spacing.sm,
+  },
+  jobLocation: {
+    fontSize: theme.typography.size.sm,
+    color: theme.colors.text.secondary,
+  },
+  jobBudget: {
+    fontSize: theme.typography.size.md,
+    fontWeight: 'bold',
+    color: theme.colors.success.main,
+  },
+  jobDetails: {
+    marginTop: theme.spacing.sm,
+    gap: theme.spacing.xs,
+  },
+  jobDetail: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+  },
+  jobDetailText: {
+    fontSize: theme.typography.size.sm,
+    color: theme.colors.text.secondary,
+  },
+});
+
+// Job card component - Refactored to accept theme as prop
+const JobCard = ({ job, onPress, theme, isSelected }) => {
+  // Call INSIDE component
+  const styles = getJobCardStyles(theme); 
+
   return (
-    <TouchableOpacity style={styles.jobCard} onPress={onPress}>
+    <Card
+      key={job.id}
+      style={[
+        styles.jobCard,
+        isSelected && styles.selectedJobCard
+      ]}
+      onPress={onPress}
+    >
       <View style={styles.jobHeader}>
-        <Text style={styles.jobTitle}>{job.title}</Text>
+        <View>
+          <Text style={styles.jobTitle}>{job.title}</Text>
+          <Text style={styles.jobLocation}>{job.location}</Text>
+        </View>
         <Text style={styles.jobBudget}>${job.budget}</Text>
       </View>
-      
+
       <View style={styles.jobDetails}>
         <View style={styles.jobDetail}>
-          <Ionicons name="location-outline" size={16} color={theme.colors.neutral[600]} />
-          <Text style={styles.jobDetailText}>{job.location}</Text>
-        </View>
-        
-        <View style={styles.jobDetail}>
-          <Ionicons name="construct-outline" size={16} color={theme.colors.neutral[600]} />
+          <MaterialIcons name="category" size={16} color={theme.colors.neutral[600]} />
           <Text style={styles.jobDetailText}>{job.category}</Text>
         </View>
-        
         <View style={styles.jobDetail}>
-          <Ionicons name="calendar-outline" size={16} color={theme.colors.neutral[600]} />
+          <MaterialIcons name="schedule" size={16} color={theme.colors.neutral[600]} />
           <Text style={styles.jobDetailText}>Posted: {job.datePosted}</Text>
         </View>
+        <View style={styles.jobDetail}>
+          <MaterialIcons name="place" size={16} color={theme.colors.neutral[600]} />
+          <Text style={styles.jobDetailText}>{job.distance} miles away</Text>
+        </View>
       </View>
-      
-      <Text style={styles.jobDescription} numberOfLines={2}>
-        {job.description}
-      </Text>
-      
-      <View style={styles.jobFooter}>
-        <TouchableOpacity 
-          style={styles.applyButton} 
-          onPress={(e) => {
-            e.stopPropagation();
-            // In a real app, this would call an API to apply for the job
-            alert(`Applied to: ${job.title}`);
-          }}
-        >
-          <Text style={styles.applyButtonText}>Apply</Text>
-        </TouchableOpacity>
-      </View>
-    </TouchableOpacity>
+    </Card>
   );
 };
 
+// Function to generate styles for WorkerDashboard (moved definition)
+const getDashboardStyles = (theme) => StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: theme.colors.background?.secondary || theme.colors.neutral[100], 
+  },
+  header: {
+    backgroundColor: theme.colors.primary.main,
+    paddingTop: 40, // Adjust as needed for status bar
+    paddingBottom: 15,
+    paddingHorizontal: 20,
+  },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  backButton: {
+    marginRight: 15,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: theme.colors.primary.contrast,
+    flex: 1,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerButton: {
+    marginLeft: 15,
+  },
+  content: {
+    paddingBottom: 80, // Space for potential bottom nav
+  },
+  mapSection: {
+    marginBottom: theme.spacing.lg,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.lg,
+    marginTop: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
+  },
+  sectionTitle: {
+    fontSize: theme.typography.size.lg,
+    fontWeight: 'bold',
+    color: theme.colors.text.primary,
+  },
+  seeAllButton: {
+    fontSize: theme.typography.size.sm,
+    color: theme.colors.accent.main,
+    fontWeight: '500',
+  },
+  mapContainer: {
+    height: 250,
+    backgroundColor: theme.colors.neutral[200],
+    borderRadius: theme.borderRadius.md,
+    overflow: 'hidden',
+    marginHorizontal: theme.spacing.lg,
+  },
+  section: {
+    paddingHorizontal: theme.spacing.lg,
+    marginTop: theme.spacing.lg, 
+  },
+  centerContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: theme.spacing.xxl,
+  },
+  emptyText: {
+    fontSize: theme.typography.size.lg,
+    color: theme.colors.neutral[500],
+    marginTop: theme.spacing.md,
+  },
+  emptySubtext: {
+    fontSize: theme.typography.size.sm,
+    color: theme.colors.neutral[400],
+    marginTop: theme.spacing.xs,
+  },
+  jobsList: {
+    gap: theme.spacing.md,
+  },
+});
+
 export default function WorkerDashboard() {
+  const { theme } = useTheme();
+  // Call INSIDE component
+  const styles = getDashboardStyles(theme); 
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -116,6 +251,15 @@ export default function WorkerDashboard() {
       }
     });
 
+  if (loading) {
+    // Use inline style or recreate basicStyles with styled-components if needed elsewhere
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background?.secondary || '#FFFFFF' }} > 
+        <ActivityIndicator size="large" color={theme.colors.primary.main} /> 
+      </View>
+    );
+  }
+
   const renderSection = ({ item: section }) => {
     switch (section.type) {
       case 'map':
@@ -142,7 +286,7 @@ export default function WorkerDashboard() {
             <Text style={styles.sectionTitle}>Recent Jobs</Text>
             {loading ? (
               <View style={styles.centerContent}>
-                <MaterialIcons name="hourglass-empty" size={48} color={theme.colors.neutral[400]} />
+                <ActivityIndicator size="large" color={theme.colors.primary.main} />
               </View>
             ) : filteredJobs.length === 0 ? (
               <View style={styles.centerContent}>
@@ -153,40 +297,16 @@ export default function WorkerDashboard() {
             ) : (
               <View style={styles.jobsList}>
                 {filteredJobs.map((job) => (
-                  <Card
+                  <JobCard
                     key={job.id}
-                    style={[
-                      styles.jobCard,
-                      selectedJob?.id === job.id && styles.selectedJobCard
-                    ]}
+                    job={job}
+                    theme={theme} 
+                    isSelected={selectedJob?.id === job.id}
                     onPress={() => {
                       setSelectedJob(job);
                       router.push(`/job/${job.id}`);
                     }}
-                  >
-                    <View style={styles.jobHeader}>
-                      <View>
-                        <Text style={styles.jobTitle}>{job.title}</Text>
-                        <Text style={styles.jobLocation}>{job.location}</Text>
-                      </View>
-                      <Text style={styles.jobBudget}>${job.budget}</Text>
-                    </View>
-
-                    <View style={styles.jobDetails}>
-                      <View style={styles.jobDetail}>
-                        <MaterialIcons name="category" size={16} color={theme.colors.neutral[600]} />
-                        <Text style={styles.jobDetailText}>{job.category}</Text>
-                      </View>
-                      <View style={styles.jobDetail}>
-                        <MaterialIcons name="schedule" size={16} color={theme.colors.neutral[600]} />
-                        <Text style={styles.jobDetailText}>Posted: {job.datePosted}</Text>
-                      </View>
-                      <View style={styles.jobDetail}>
-                        <MaterialIcons name="place" size={16} color={theme.colors.neutral[600]} />
-                        <Text style={styles.jobDetailText}>{job.distance} miles away</Text>
-                      </View>
-                    </View>
-                  </Card>
+                  />
                 ))}
               </View>
             )}
@@ -252,151 +372,3 @@ export default function WorkerDashboard() {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.neutral[100],
-  },
-  content: {
-    flex: 1,
-  },
-  mapSection: {
-    marginTop: theme.spacing.lg,
-    paddingHorizontal: theme.spacing.lg,
-  },
-  mapContainer: {
-    height: 200,
-    borderRadius: theme.borderRadius.lg,
-    overflow: 'hidden',
-    ...theme.shadows.md,
-  },
-  section: {
-    marginTop: theme.spacing.xl,
-    paddingHorizontal: theme.spacing.lg,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: theme.spacing.md,
-  },
-  sectionTitle: {
-    fontSize: theme.typography.size.lg,
-    fontWeight: '600',
-    color: theme.colors.neutral[900],
-  },
-  seeAllButton: {
-    color: theme.colors.primary.main,
-    fontSize: theme.typography.size.md,
-  },
-  jobsList: {
-    gap: theme.spacing.md,
-  },
-  jobCard: {
-    marginBottom: theme.spacing.md,
-  },
-  selectedJobCard: {
-    borderColor: theme.colors.primary.main,
-    borderWidth: 2,
-  },
-  jobHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: theme.spacing.sm,
-  },
-  jobTitle: {
-    fontSize: theme.typography.size.lg,
-    fontWeight: '600',
-    color: theme.colors.neutral[900],
-    marginBottom: theme.spacing.xs,
-  },
-  jobLocation: {
-    fontSize: theme.typography.size.sm,
-    color: theme.colors.neutral[600],
-  },
-  jobBudget: {
-    fontSize: theme.typography.size.lg,
-    fontWeight: '600',
-    color: theme.colors.success.main,
-  },
-  jobDetails: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: theme.spacing.md,
-  },
-  jobDetail: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  jobDetailText: {
-    marginLeft: theme.spacing.xs,
-    fontSize: theme.typography.size.sm,
-    color: theme.colors.neutral[600],
-  },
-  jobDescription: {
-    fontSize: theme.typography.size.sm,
-    color: theme.colors.neutral[700],
-    marginBottom: theme.spacing.md,
-  },
-  jobFooter: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-  },
-  applyButton: {
-    backgroundColor: theme.colors.accent.main,
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.borderRadius.md,
-  },
-  applyButtonText: {
-    color: theme.colors.primary.contrast,
-    fontSize: theme.typography.size.sm,
-    fontWeight: '600',
-  },
-  centerContent: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: theme.spacing.xl,
-  },
-  emptyText: {
-    fontSize: theme.typography.size.lg,
-    fontWeight: '600',
-    color: theme.colors.neutral[600],
-    marginTop: theme.spacing.md,
-  },
-  emptySubtext: {
-    fontSize: theme.typography.size.md,
-    color: theme.colors.neutral[400],
-    marginTop: theme.spacing.xs,
-  },
-  header: {
-    backgroundColor: theme.colors.primary.main,
-    paddingTop: theme.spacing.lg,
-    paddingBottom: theme.spacing.md,
-  },
-  headerTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: theme.spacing.lg,
-    marginBottom: theme.spacing.sm,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    paddingHorizontal: theme.spacing.lg,
-  },
-  backButton: {
-    marginRight: theme.spacing.md,
-    padding: theme.spacing.xs,
-  },
-  headerButton: {
-    padding: theme.spacing.xs,
-  },
-  headerTitle: {
-    fontSize: theme.typography.size.xl,
-    fontWeight: 'bold',
-    color: theme.colors.primary.contrast,
-  },
-});

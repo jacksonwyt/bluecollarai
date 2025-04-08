@@ -3,10 +3,11 @@ import { StyleSheet, View, Text, TextInput, TouchableOpacity, SafeAreaView, Scro
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { theme } from '../theme';
+import { useTheme } from '../theme';
 import { categories } from '../../api/mockData';
 
 export default function WorkerProfileSetupScreen() {
+  const { theme } = useTheme();
   const [profileImage, setProfileImage] = useState(null);
   const [bio, setBio] = useState('');
   const [rate, setRate] = useState('');
@@ -50,6 +51,8 @@ export default function WorkerProfileSetupScreen() {
       router.replace('/(worker)/(tabs)');
     }, 1000);
   };
+
+  const styles = getProfileSetupStyles(theme);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -145,41 +148,44 @@ export default function WorkerProfileSetupScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getProfileSetupStyles = (theme) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.primary.contrast,
+    backgroundColor: theme.colors.background?.primary || theme.colors.primary.contrast,
   },
   scrollContent: {
     flexGrow: 1,
   },
   content: {
     flex: 1,
-    padding: 20,
+    padding: theme.spacing.lg,
   },
   backButton: {
-    marginBottom: 20,
+    marginBottom: theme.spacing.lg,
+    alignSelf: 'flex-start',
+    padding: theme.spacing.xs,
   },
   title: {
-    fontSize: theme.typography.size.xl,
+    fontSize: theme.typography.size.xxxl,
     fontWeight: 'bold',
-    color: theme.colors.primary.main,
-    marginBottom: 10,
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.sm,
   },
   subtitle: {
     fontSize: theme.typography.size.md,
-    color: theme.colors.neutral[500],
-    marginBottom: 30,
+    color: theme.colors.text.secondary,
+    marginBottom: theme.spacing.xl,
   },
   profileImageContainer: {
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: theme.spacing.xl,
   },
   imagePickerButton: {
-    width: 150,
-    height: 150,
-    borderRadius: 75,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     overflow: 'hidden',
+    ...theme.shadows.sm,
   },
   profileImage: {
     width: '100%',
@@ -188,81 +194,88 @@ const styles = StyleSheet.create({
   imagePlaceholder: {
     width: '100%',
     height: '100%',
-    backgroundColor: theme.colors.primary.contrast,
+    backgroundColor: theme.colors.neutral[100],
     borderWidth: 2,
     borderColor: theme.colors.neutral[300],
-    borderRadius: 75,
+    borderRadius: 60,
     borderStyle: 'dashed',
     justifyContent: 'center',
     alignItems: 'center',
   },
   imagePlaceholderText: {
     color: theme.colors.neutral[500],
-    marginTop: 5,
+    marginTop: theme.spacing.xs,
+    fontSize: theme.typography.size.sm,
   },
   formContainer: {
-    marginBottom: 30,
+    marginBottom: theme.spacing.xl,
   },
   inputLabel: {
     fontSize: theme.typography.size.md,
-    fontWeight: 'bold',
-    color: theme.colors.primary.main,
-    marginBottom: 10,
+    fontWeight: '600',
+    color: theme.colors.text.primary,
+    marginBottom: theme.spacing.sm,
   },
   input: {
     borderWidth: 1,
     borderColor: theme.colors.neutral[300],
-    borderRadius: 8,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
+    borderRadius: theme.borderRadius.md,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm + 2,
     fontSize: theme.typography.size.md,
-    marginBottom: 20,
+    marginBottom: theme.spacing.lg,
+    backgroundColor: theme.colors.background.primary,
   },
   textArea: {
     borderWidth: 1,
     borderColor: theme.colors.neutral[300],
-    borderRadius: 8,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
+    borderRadius: theme.borderRadius.md,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm + 2,
     fontSize: theme.typography.size.md,
-    marginBottom: 20,
-    height: 100,
+    marginBottom: theme.spacing.lg,
+    height: 120,
     textAlignVertical: 'top',
+    backgroundColor: theme.colors.background.primary,
   },
   skillsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginBottom: 20,
+    marginBottom: theme.spacing.lg,
+    marginLeft: -theme.spacing.xs,
   },
   skillChip: {
-    backgroundColor: theme.colors.primary.contrast,
+    backgroundColor: theme.colors.neutral[100],
     borderWidth: 1,
     borderColor: theme.colors.neutral[300],
-    borderRadius: 20,
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    margin: 5,
+    borderRadius: theme.borderRadius.full,
+    paddingVertical: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.md,
+    margin: theme.spacing.xs,
   },
   selectedSkill: {
-    backgroundColor: theme.colors.primary.light,
+    backgroundColor: theme.colors.primary.surface,
     borderColor: theme.colors.primary.light,
   },
   skillChipText: {
-    color: theme.colors.primary.main,
+    fontSize: theme.typography.size.sm,
+    color: theme.colors.text.secondary,
   },
   selectedSkillText: {
-    color: theme.colors.primary.contrast,
+    color: theme.colors.primary.main,
+    fontWeight: '500',
   },
   submitButton: {
     backgroundColor: theme.colors.primary.main,
-    borderRadius: 8,
-    padding: 15,
+    borderRadius: theme.borderRadius.md,
+    paddingVertical: theme.spacing.md,
     alignItems: 'center',
-    marginBottom: 20,
+    marginTop: theme.spacing.md,
+    ...theme.shadows.sm,
   },
   submitButtonText: {
-    color: theme.colors.primary.contrast,
     fontSize: theme.typography.size.md,
-    fontWeight: 'bold',
+    color: theme.colors.primary.contrast,
+    fontWeight: '600',
   },
 }); 

@@ -4,7 +4,7 @@ import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { theme } from './theme';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import Card from './components/ui/Card';
+import Card from './_components/ui/Card';
 
 export default function HomeScreen() {
   // Animation values

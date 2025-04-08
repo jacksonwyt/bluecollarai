@@ -1,66 +1,36 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
-  Text, 
   FlatList, 
   TouchableOpacity, 
-  StyleSheet, 
   Dimensions, 
   Animated,
   Platform,
   SafeAreaView,
-  Image
+  Image,
+  ActivityIndicator,
+  StyleSheet
 } from 'react-native';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
-import theme, { useTheme, COLORS } from '../../theme';
+import styled from 'styled-components/native';
+import { useTheme } from '../../theme/index';
 import { mockApiCall } from '../../../api/mockData';
-import JobListMapView from '../../components/JobListMapView';
-import Card from '../../components/ui/Card';
-import Button from '../../components/ui/Button';
-
-// Try to import BlurView
-let BlurView;
-try {
-  BlurView = require('expo-blur').BlurView;
-} catch (error) {
-  console.warn('expo-blur is not available:', error);
-}
-
-// Try to import LinearGradient
-let LinearGradient;
-try {
-  LinearGradient = require('expo-linear-gradient').LinearGradient;
-} catch (error) {
-  console.warn('expo-linear-gradient is not available:', error);
-}
+import JobListMapView from '../../_components/JobListMapView';
+import Card from '../../_components/ui/Card';
+import Button from '../../_components/ui/Button';
 
 const { width } = Dimensions.get('window');
 
-const getStatusColor = (status) => {
-  switch (status.toLowerCase()) {
-    case 'open':
-      return theme.colors.warning;
-    case 'in-progress':
-      return theme.colors.accent;
-    case 'completed':
-      return theme.colors.success;
-    default:
-      return theme.colors.neutral;
-  }
-};
-
 export default function ClientDashboard() {
+  const theme = useTheme();
   const [activeJobs, setActiveJobs] = useState([]);
   const [nearbyWorkers, setNearbyWorkers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedMapItem, setSelectedMapItem] = useState(null);
   
-  // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const translateYAnim = useRef(new Animated.Value(20)).current;
-  
-  // For quick actions animation
   const quickActionAnims = [0, 1, 2].map(() => useRef(new Animated.Value(0)).current);
 
   useEffect(() => {
@@ -77,7 +47,6 @@ export default function ClientDashboard() {
       } finally {
         setLoading(false);
         
-        // Start animations when data is loaded
         Animated.parallel([
           Animated.timing(fadeAnim, {
             toValue: 1,
@@ -115,15 +84,14 @@ export default function ClientDashboard() {
         }
       ]
     }}>
-      <TouchableOpacity 
-        style={styles.quickAction}
+      <QuickActionTouchable 
         onPress={onPress}
         accessibilityRole="button"
         accessibilityLabel={label}
       >
         <MaterialIcons name={icon} size={28} color={theme.colors.primary.main} />
-        <Text style={styles.quickActionLabel}>{label}</Text>
-      </TouchableOpacity>
+        <QuickActionLabel>{label}</QuickActionLabel>
+      </QuickActionTouchable>
     </Animated.View>
   );
 
@@ -142,41 +110,37 @@ export default function ClientDashboard() {
     const statusColor = getStatusColor(job.status);
     
     return (
-      <Animated.View style={{
+      <JobCardContainer style={{
         opacity: itemFade,
         transform: [{ translateY: itemFade.interpolate({
           inputRange: [0, 1],
           outputRange: [20, 0]
         })}]
       }}>
-        <Card 
-          variant="elevated" 
-          style={styles.jobCard}
-        >
-          <TouchableOpacity 
-            style={styles.cardTouchable}
+        <StyledJobCard variant="elevated">
+          <CardTouchable 
             onPress={() => router.push(`/job/${job.id}`)}
             activeOpacity={0.7}
           >
-            <View style={styles.jobHeader}>
-              <Text style={styles.jobTitle}>{job.title}</Text>
-              <View style={[styles.statusBadge, { backgroundColor: statusColor.main }]}>
-                <Text style={styles.statusText}>{job.status}</Text>
-              </View>
-            </View>
-            <View style={styles.jobDetails}>
-              <View style={styles.detailRow}>
+            <JobHeader>
+              <JobTitle>{job.title}</JobTitle>
+              <StatusBadge backgroundColor={statusColor.main}>
+                <StatusText>{job.status}</StatusText>
+              </StatusBadge>
+            </JobHeader>
+            <JobDetails>
+              <DetailRow>
                 <MaterialIcons name="person" size={16} color={theme.colors.neutral[600]} />
-                <Text style={styles.detailText}>{job.worker || 'No worker assigned'}</Text>
-              </View>
-              <View style={styles.detailRow}>
+                <DetailText>{job.worker || 'No worker assigned'}</DetailText>
+              </DetailRow>
+              <DetailRow>
                 <MaterialIcons name="attach-money" size={16} color={theme.colors.neutral[600]} />
-                <Text style={styles.detailText}>{job.budget}</Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-        </Card>
-      </Animated.View>
+                <DetailText>{job.budget}</DetailText>
+              </DetailRow>
+            </JobDetails>
+          </CardTouchable>
+        </StyledJobCard>
+      </JobCardContainer>
     );
   };
 
@@ -193,55 +157,50 @@ export default function ClientDashboard() {
     }, []);
     
     return (
-      <Animated.View style={{
+      <WorkerCardContainer style={{
         opacity: itemFade,
         transform: [{ translateY: itemFade.interpolate({
           inputRange: [0, 1],
           outputRange: [20, 0]
         })}]
       }}>
-        <Card 
-          variant={index % 2 === 0 ? "elevated" : "glass"}
-          style={styles.workerCard}
-        >
-          <TouchableOpacity 
-            style={styles.cardTouchable}
+        <StyledWorkerCard variant={index % 2 === 0 ? "elevated" : "glass"}>
+          <CardTouchable 
             onPress={() => router.push(`/worker/${worker.id}`)}
             activeOpacity={0.7}
           >
-            <View style={styles.workerHeader}>
+            <WorkerHeader>
               {worker.profilePicture ? (
-                <View style={styles.workerImageContainer}>
-                  <View style={styles.workerImageBorder}>
-                    <Image 
+                <WorkerImageContainer>
+                  <WorkerImageBorder>
+                    <WorkerImage 
                       source={{ uri: worker.profilePicture }} 
-                      style={styles.workerImage} 
                     />
-                  </View>
-                </View>
+                  </WorkerImageBorder>
+                </WorkerImageContainer>
               ) : (
-                <View style={styles.workerAvatarContainer}>
+                <WorkerAvatarContainer>
                   <MaterialIcons name="account-circle" size={48} color={theme.colors.primary.main} />
-                </View>
+                </WorkerAvatarContainer>
               )}
-              <View style={styles.workerInfo}>
-                <Text style={styles.workerName}>{worker.name}</Text>
-                <Text style={styles.workerSkills}>{worker.skills.join(', ')}</Text>
-              </View>
-            </View>
-            <View style={styles.workerStats}>
-              <View style={styles.statItem}>
+              <WorkerInfo>
+                <WorkerName>{worker.name}</WorkerName>
+                <WorkerSkills>{worker.skills.join(', ')}</WorkerSkills>
+              </WorkerInfo>
+            </WorkerHeader>
+            <WorkerStats>
+              <StatItem>
                 <MaterialIcons name="star" size={16} color={theme.colors.warning.main} />
-                <Text style={styles.statText}>{worker.rating}</Text>
-              </View>
-              <View style={styles.statItem}>
+                <StatText>{worker.rating}</StatText>
+              </StatItem>
+              <StatItem>
                 <MaterialIcons name="work" size={16} color={theme.colors.neutral[600]} />
-                <Text style={styles.statText}>{worker.jobsCompleted} jobs</Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-        </Card>
-      </Animated.View>
+                <StatText>{worker.jobsCompleted} jobs</StatText>
+              </StatItem>
+            </WorkerStats>
+          </CardTouchable>
+        </StyledWorkerCard>
+      </WorkerCardContainer>
     );
   };
 
@@ -249,13 +208,10 @@ export default function ClientDashboard() {
     switch (section.type) {
       case 'quickActions':
         return (
-          <Animated.View style={[
-            styles.quickActions,
-            { 
-              opacity: fadeAnim,
-              transform: [{ translateY: translateYAnim }] 
-            }
-          ]}>
+          <QuickActionsContainer style={{
+            opacity: fadeAnim,
+            transform: [{ translateY: translateYAnim }]
+          }}>
             <QuickAction
               icon="add-circle"
               label="Post Job"
@@ -274,19 +230,16 @@ export default function ClientDashboard() {
               onPress={() => router.push('/my-jobs')}
               animValue={quickActionAnims[2]}
             />
-          </Animated.View>
+          </QuickActionsContainer>
         );
       case 'map':
         return (
-          <Animated.View style={[
-            styles.mapSection,
-            { 
-              opacity: fadeAnim,
-              transform: [{ translateY: translateYAnim }] 
-            }
-          ]}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Activity Map</Text>
+          <MapSectionView style={{
+            opacity: fadeAnim,
+            transform: [{ translateY: translateYAnim }]
+          }}>
+            <SectionHeader>
+              <SectionTitle>Activity Map</SectionTitle>
               <Button 
                 variant="ghost"
                 icon="explore"
@@ -295,30 +248,27 @@ export default function ClientDashboard() {
               >
                 Explore
               </Button>
-            </View>
-            <Card variant="glass" style={styles.mapCard}>
-              <View style={styles.mapContainer}>
+            </SectionHeader>
+            <MapCard variant="glass">
+              <MapContainer>
                 <JobListMapView
                   jobs={activeJobs}
                   workers={nearbyWorkers}
                   selectedItem={selectedMapItem}
                   onItemSelect={setSelectedMapItem}
                 />
-              </View>
-            </Card>
-          </Animated.View>
+              </MapContainer>
+            </MapCard>
+          </MapSectionView>
         );
       case 'activeJobs':
         return (
-          <Animated.View style={[
-            styles.section,
-            { 
-              opacity: fadeAnim,
-              transform: [{ translateY: translateYAnim }] 
-            }
-          ]}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Active Jobs</Text>
+          <SectionView style={{
+            opacity: fadeAnim,
+            transform: [{ translateY: translateYAnim }]
+          }}>
+            <SectionHeader>
+              <SectionTitle>Active Jobs</SectionTitle>
               <Button 
                 variant="ghost"
                 icon="arrow-forward"
@@ -327,28 +277,26 @@ export default function ClientDashboard() {
               >
                 See All
               </Button>
-            </View>
-            <FlatList
+            </SectionHeader>
+            <StyledFlatList
               horizontal
               showsHorizontalScrollIndicator={false}
               data={activeJobs}
               keyExtractor={(item) => item.id}
               renderItem={({ item, index }) => <JobCard job={item} index={index} />}
-              contentContainerStyle={styles.jobsList}
+              ListEmptyComponent={() => <EmptyListText>No active jobs.</EmptyListText>}
+              theme={theme}
             />
-          </Animated.View>
+          </SectionView>
         );
       case 'nearbyWorkers':
         return (
-          <Animated.View style={[
-            styles.section,
-            { 
-              opacity: fadeAnim,
-              transform: [{ translateY: translateYAnim }] 
-            }
-          ]}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Available Workers Nearby</Text>
+          <SectionView style={{
+            opacity: fadeAnim,
+            transform: [{ translateY: translateYAnim }]
+          }}>
+            <SectionHeader>
+              <SectionTitle>Available Workers Nearby</SectionTitle>
               <Button 
                 variant="ghost"
                 icon="arrow-forward"
@@ -357,16 +305,17 @@ export default function ClientDashboard() {
               >
                 See All
               </Button>
-            </View>
-            <FlatList
+            </SectionHeader>
+            <StyledFlatList
               horizontal
               showsHorizontalScrollIndicator={false}
               data={nearbyWorkers}
               keyExtractor={(item) => item.id}
               renderItem={({ item, index }) => <WorkerCard worker={item} index={index} />}
-              contentContainerStyle={styles.workersList}
+              ListEmptyComponent={() => <EmptyListText>No nearby workers.</EmptyListText>}
+              theme={theme}
             />
-          </Animated.View>
+          </SectionView>
         );
       default:
         return null;
@@ -380,242 +329,347 @@ export default function ClientDashboard() {
     { id: 'nearbyWorkers', type: 'nearbyWorkers' }
   ];
 
-  return (
-    <View style={styles.container}>
-      <SafeAreaView>
-        <View style={styles.header}>
-          <TouchableOpacity 
-            style={styles.headerBackButton}
-            onPress={() => router.canGoBack() ? router.back() : null}
-          >
-            <MaterialIcons name="arrow-back" size={24} color={theme.colors.primary.main} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Dashboard</Text>
-          <TouchableOpacity style={styles.headerButton}>
-            <MaterialIcons name="notifications" size={24} color={theme.colors.primary.main} />
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
+  const StyledSafeAreaView = styled(SafeAreaView)`
+    flex: 1;
+    background-color: ${theme.colors.background.secondary};
+  `;
 
-      {loading ? (
-        <View style={styles.centerContent}>
-          <MaterialIcons name="hourglass-empty" size={48} color={theme.colors.neutral[400]} />
-          <Text style={styles.loadingText}>Loading...</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={sections}
-          keyExtractor={(item) => item.id}
-          renderItem={renderSection}
-          contentContainerStyle={styles.content}
-          showsVerticalScrollIndicator={false}
-        />
-      )}
-    </View>
+  const StyledHeaderView = styled.View`
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom-width: 1px;
+    border-bottom-color: ${theme.colors.divider};
+    background-color: ${theme.colors.background.primary};
+  `;
+
+  const HeaderButton = styled.TouchableOpacity`
+    padding: 8px;
+  `;
+
+  const HeaderTitle = styled.Text`
+    font-size: 20px;
+    font-weight: bold;
+    color: ${theme.colors.primary.main};
+    flex: 1;
+    text-align: center;
+  `;
+
+  const LoadingContainer = styled.View`
+    flex: 1;
+    justify-content: center;
+    align-items: center;
+    background-color: ${theme.colors.background.secondary};
+  `;
+
+  const ListContentContainer = styled.View`
+    padding-bottom: ${(props) => props.theme.spacing.xxxl}px;
+  `;
+
+  const WelcomeText = styled.Text`
+    font-size: ${theme.typography.size.xxxl}px;
+    font-weight: bold;
+    color: ${theme.colors.text.primary};
+    margin-bottom: ${theme.spacing.xs}px;
+    padding: ${theme.spacing.md}px ${theme.spacing.lg}px 0;
+  `;
+
+  const DashboardSubtitle = styled.Text`
+    font-size: ${theme.typography.size.lg}px;
+    color: ${theme.colors.text.secondary};
+    margin-bottom: ${theme.spacing.xl}px;
+    padding: 0 ${theme.spacing.lg}px;
+  `;
+
+  const QuickActionsContainer = styled(Animated.View)`
+    flex-direction: row;
+    justify-content: space-around;
+    align-items: center;
+    margin: 0 ${theme.spacing.lg}px ${theme.spacing.xl}px;
+    background-color: ${theme.colors.background.primary};
+    padding: ${theme.spacing.lg}px 0;
+    border-radius: ${theme.borderRadius.lg}px;
+    shadow-color: #000;
+    shadow-offset: 0px 2px;
+    shadow-opacity: 0.1;
+    elevation: 3;
+  `;
+
+  const QuickActionTouchable = styled.TouchableOpacity`
+    align-items: center;
+    padding: ${theme.spacing.sm}px;
+  `;
+
+  const QuickActionLabel = styled.Text`
+    margin-top: ${theme.spacing.xs}px;
+    font-size: ${theme.typography.size.sm}px;
+    color: ${theme.colors.primary.main};
+    font-weight: 500;
+  `;
+
+  const SectionView = styled(Animated.View)`
+    margin-bottom: ${theme.spacing.xl}px;
+  `;
+
+  const SectionHeader = styled.View`
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 ${theme.spacing.lg}px;
+    margin-bottom: ${theme.spacing.md}px;
+    margin-top: ${theme.spacing.lg}px;
+  `;
+
+  const SectionTitle = styled.Text`
+    font-size: ${theme.typography.size.lg}px;
+    font-weight: bold;
+    color: ${theme.colors.text.primary};
+  `;
+
+  const MapSectionView = styled(SectionView)`
+  `;
+
+  const MapCard = styled(Card)`
+    margin: 0 ${theme.spacing.lg}px;
+  `;
+
+  const MapContainer = styled.View`
+    height: 180px;
+    border-radius: ${theme.borderRadius.lg}px;
+    overflow: hidden;
+  `;
+
+  const MapCalloutView = styled.View`
+    position: absolute;
+    bottom: ${theme.spacing.lg}px;
+    left: ${theme.spacing.lg}px;
+    right: ${theme.spacing.lg}px;
+    background-color: ${theme.colors.background.primary};
+    padding: ${theme.spacing.md}px;
+    border-radius: ${theme.borderRadius.md}px;
+    shadow-color: #000;
+    shadow-offset: 0px 4px;
+    shadow-opacity: 0.15;
+    shadow-radius: 6px;
+    elevation: 5;
+  `;
+
+  const CalloutTitle = styled.Text`
+    font-size: ${theme.typography.size.lg}px;
+    font-weight: 600;
+    margin-bottom: ${theme.spacing.xs}px;
+    color: ${theme.colors.text.primary};
+  `;
+
+  const CalloutDescription = styled.Text`
+    font-size: ${theme.typography.size.sm}px;
+    color: ${theme.colors.text.secondary};
+  `;
+
+  const StyledFlatList = styled(FlatList).attrs(props => ({
+    contentContainerStyle: {
+      paddingHorizontal: props.horizontal ? theme.spacing.lg : 0,
+      paddingBottom: theme.spacing.md,
+    }
+  }))``;
+
+  const JobCardContainer = styled(Animated.View)`
+    width: ${width * 0.7}px;
+    margin-right: ${theme.spacing.md}px;
+  `;
+
+  const StyledJobCard = styled(Card)`
+    padding: 0;
+  `;
+
+  const CardTouchable = styled.TouchableOpacity`
+    flex: 1;
+    padding: ${theme.spacing.md}px;
+  `;
+
+  const JobHeader = styled.View`
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: ${theme.spacing.sm}px;
+  `;
+
+  const JobTitle = styled.Text`
+    font-size: ${theme.typography.size.md}px;
+    font-weight: bold;
+    color: ${theme.colors.text.primary};
+    flex: 1;
+    margin-right: ${theme.spacing.sm}px;
+  `;
+
+  const StatusBadge = styled.View`
+    padding: ${theme.spacing.xxs}px ${theme.spacing.sm}px;
+    border-radius: ${theme.borderRadius.full}px;
+    background-color: ${(props) => props.backgroundColor || theme.colors.neutral.main};
+  `;
+
+  const StatusText = styled.Text`
+    font-size: ${theme.typography.size.xs}px;
+    color: ${theme.colors.primary.contrast};
+    font-weight: 500;
+  `;
+
+  const JobDetails = styled.View`
+    margin-top: ${theme.spacing.xs}px;
+  `;
+
+  const DetailRow = styled.View`
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: ${theme.spacing.xs}px;
+  `;
+
+  const DetailText = styled.Text`
+    font-size: ${theme.typography.size.sm}px;
+    color: ${theme.colors.text.secondary};
+    margin-left: ${theme.spacing.xs}px;
+  `;
+
+  const WorkerCardContainer = styled(Animated.View)`
+    width: ${width * 0.65}px;
+    margin-right: ${theme.spacing.md}px;
+  `;
+
+  const StyledWorkerCard = styled(Card)`
+    padding: 0;
+  `;
+
+  const WorkerHeader = styled.View`
+    flex-direction: row;
+    align-items: center;
+    margin-bottom: ${theme.spacing.sm}px;
+  `;
+
+  const WorkerImageContainer = styled.View`
+    margin-right: ${theme.spacing.md}px;
+  `;
+
+  const WorkerImageBorder = styled.View`
+    width: 52px;
+    height: 52px;
+    border-radius: ${theme.borderRadius.full}px;
+    padding: 2px;
+    background-color: ${theme.colors.primary.light};
+    align-items: center;
+    justify-content: center;
+  `;
+
+  const WorkerImage = styled.Image`
+    width: 48px;
+    height: 48px;
+    border-radius: ${theme.borderRadius.full}px;
+  `;
+
+  const WorkerAvatarContainer = styled.View`
+    margin-right: ${theme.spacing.md}px;
+    width: 52px;
+    height: 52px;
+    border-radius: ${theme.borderRadius.full}px;
+    align-items: center;
+    justify-content: center;
+    background-color: ${theme.colors.primary.surface};
+  `;
+
+  const WorkerInfo = styled.View`
+    flex: 1;
+  `;
+
+  const WorkerName = styled.Text`
+    font-size: ${theme.typography.size.md}px;
+    font-weight: bold;
+    color: ${theme.colors.text.primary};
+    margin-bottom: ${theme.spacing.xxs}px;
+  `;
+
+  const WorkerSkills = styled.Text`
+    font-size: ${theme.typography.size.xs}px;
+    color: ${theme.colors.text.secondary};
+  `;
+
+  const WorkerStats = styled.View`
+    flex-direction: row;
+    margin-top: ${theme.spacing.sm}px;
+    border-top-width: 1px;
+    border-top-color: ${theme.colors.divider};
+    padding-top: ${theme.spacing.sm}px;
+  `;
+
+  const StatItem = styled.View`
+    flex-direction: row;
+    align-items: center;
+    margin-right: ${theme.spacing.md}px;
+  `;
+
+  const StatText = styled.Text`
+    font-size: ${theme.typography.size.sm}px;
+    color: ${theme.colors.text.secondary};
+    margin-left: ${theme.spacing.xxs}px;
+  `;
+
+  const EmptyListText = styled.Text`
+    text-align: center;
+    margin-top: ${theme.spacing.xl}px;
+    color: ${theme.colors.text.tertiary};
+    font-size: ${theme.typography.size.md}px;
+    padding: 0 ${theme.spacing.lg}px;
+  `;
+
+  const getStatusColor = (status) => {
+    switch (status.toLowerCase()) {
+      case 'open':
+        return theme.colors.warning;
+      case 'in-progress':
+        return theme.colors.accent;
+      case 'completed':
+        return theme.colors.success;
+      default:
+        return theme.colors.neutral;
+    }
+  };
+
+  if (loading) {
+    return (
+      <LoadingContainer>
+        <ActivityIndicator size="large" color={theme.colors.primary.main} />
+      </LoadingContainer>
+    );
+  }
+
+  return (
+    <StyledSafeAreaView>
+      <StyledHeaderView>
+        <HeaderButton 
+          onPress={() => router.canGoBack() ? router.back() : null}
+        >
+          <MaterialIcons name="arrow-back" size={24} color={theme.colors.primary.main} />
+        </HeaderButton>
+        <HeaderTitle>Dashboard</HeaderTitle>
+        <HeaderButton>
+          <MaterialIcons name="notifications" size={24} color={theme.colors.primary.main} />
+        </HeaderButton>
+      </StyledHeaderView>
+      <FlatList
+        data={sections}
+        keyExtractor={(item) => item.id}
+        renderItem={renderSection}
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={
+            <Animated.View style={{
+                opacity: fadeAnim,
+                transform: [{ translateY: translateYAnim }]
+            }}>
+                <WelcomeText>Welcome Back!</WelcomeText>
+                <DashboardSubtitle>Here's what's happening today.</DashboardSubtitle>
+            </Animated.View>
+        }
+        ListFooterComponent={<View style={{ height: theme.spacing.xxxl }} />}
+      />
+    </StyledSafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.neutral[100],
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
-    backgroundColor: '#FFFFFF',
-  },
-  headerBackButton: {
-    padding: 8,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: theme.colors.primary.main,
-    flex: 1,
-    textAlign: 'center',
-  },
-  headerButton: {
-    padding: 8,
-  },
-  content: {
-    paddingBottom: theme.spacing.xxxl,
-  },
-  centerContent: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    marginTop: theme.spacing.sm,
-    fontSize: theme.typography.size.md,
-    color: theme.colors.neutral[600],
-  },
-  quickActions: {
-    flexDirection: 'column',
-    paddingHorizontal: theme.spacing.lg,
-    marginBottom: theme.spacing.lg,
-    marginTop: theme.spacing.md,
-  },
-  quickAction: {
-    width: '100%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: theme.borderRadius.md,
-    padding: theme.spacing.lg,
-    marginBottom: theme.spacing.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    ...theme.shadows.sm,
-  },
-  quickActionIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: theme.spacing.xs,
-    ...theme.shadows.md,
-  },
-  quickActionLabel: {
-    fontSize: theme.typography.size.lg,
-    fontWeight: '600',
-    color: theme.colors.neutral[800],
-    marginLeft: theme.spacing.md,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: theme.spacing.lg,
-    marginBottom: theme.spacing.md,
-  },
-  sectionTitle: {
-    fontSize: theme.typography.size.lg,
-    fontWeight: 'bold',
-    color: theme.colors.primary.main,
-  },
-  section: {
-    marginBottom: theme.spacing.xl,
-  },
-  mapSection: {
-    marginBottom: theme.spacing.xl,
-  },
-  mapCard: {
-    marginHorizontal: theme.spacing.lg,
-    ...theme.shadows.md,
-  },
-  mapContainer: {
-    height: 180,
-    borderRadius: theme.borderRadius.lg,
-    overflow: 'hidden',
-  },
-  jobsList: {
-    paddingHorizontal: theme.spacing.lg,
-  },
-  jobCard: {
-    width: width * 0.7,
-    marginRight: theme.spacing.md,
-    ...theme.shadows.md,
-  },
-  cardTouchable: {
-    flex: 1,
-  },
-  jobHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: theme.spacing.sm,
-  },
-  jobTitle: {
-    fontSize: theme.typography.size.md,
-    fontWeight: 'bold',
-    color: theme.colors.neutral[800],
-    flex: 1,
-  },
-  statusBadge: {
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xxs,
-    borderRadius: theme.borderRadius.full,
-  },
-  statusText: {
-    fontSize: theme.typography.size.xs,
-    color: theme.colors.neutral[100],
-    fontWeight: '500',
-  },
-  jobDetails: {
-    marginTop: theme.spacing.xs,
-  },
-  detailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: theme.spacing.xs,
-  },
-  detailText: {
-    fontSize: theme.typography.size.sm,
-    color: theme.colors.neutral[600],
-    marginLeft: theme.spacing.xs,
-  },
-  workersList: {
-    paddingHorizontal: theme.spacing.lg,
-  },
-  workerCard: {
-    width: width * 0.65,
-    marginRight: theme.spacing.md,
-    ...theme.shadows.md,
-  },
-  workerHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: theme.spacing.sm,
-  },
-  workerImageContainer: {
-    marginRight: theme.spacing.md,
-  },
-  workerImageBorder: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    padding: 2,
-    backgroundColor: theme.colors.primary.light,
-  },
-  workerImage: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-  },
-  workerAvatarContainer: {
-    marginRight: theme.spacing.md,
-  },
-  workerInfo: {
-    flex: 1,
-  },
-  workerName: {
-    fontSize: theme.typography.size.md,
-    fontWeight: 'bold',
-    color: theme.colors.neutral[800],
-    marginBottom: theme.spacing.xxs,
-  },
-  workerSkills: {
-    fontSize: theme.typography.size.xs,
-    color: theme.colors.neutral[600],
-  },
-  workerStats: {
-    flexDirection: 'row',
-    marginTop: theme.spacing.sm,
-  },
-  statItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginRight: theme.spacing.md,
-  },
-  statText: {
-    fontSize: theme.typography.size.sm,
-    color: theme.colors.neutral[700],
-    marginLeft: theme.spacing.xxs,
-  },
-});
