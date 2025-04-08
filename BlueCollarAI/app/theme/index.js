@@ -548,10 +548,6 @@ export const FONTS = {
   },
   families: lightTheme.typography.fontFamily
 };
-
-// Export theme object for direct usage
-export const theme = lightTheme;
-
 // Default theme export is light theme
 export default lightTheme;
 

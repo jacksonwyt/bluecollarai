@@ -1,8 +1,8 @@
 import React from 'react';
-import { Tabs, Stack } from 'expo-router';
+import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { View, StyleSheet, Platform } from 'react-native';
-import theme, { COLORS } from '../theme';
+import { useTheme } from '../theme';
 
 // Import BlurView with try/catch to handle potential issues
 let BlurView;
@@ -12,12 +12,17 @@ try {
   console.warn('expo-blur is not available:', error);
 }
 
-const TabBarIcon = ({ name, color, size, focused }) => (
-  <View style={[styles.iconContainer, focused ? styles.activeIconContainer : null]}>
-    <Ionicons name={name} size={size} color={color} />
-    {focused && <View style={styles.indicator} />}
-  </View>
-);
+const TabBarIcon = ({ name, color, size, focused }) => {
+  const theme = useTheme();
+  const dynamicStyles = createDynamicStyles(theme);
+
+  return (
+    <View style={[styles.iconContainer, focused ? styles.activeIconContainer : null]}>
+      <Ionicons name={name} size={size} color={color} />
+      {focused && <View style={dynamicStyles.indicator} />}
+    </View>
+  );
+};
 
 const TabBarBackground = () => {
   if (Platform.OS === 'ios' && BlurView) {
@@ -32,25 +37,9 @@ const TabBarBackground = () => {
   return null;
 };
 
-export default function WorkerTabLayout() {
-  return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-      }}
-    >
-      <Stack.Screen
-        name="profile-setup"
-        options={{ 
-          presentation: 'modal', 
-        }}
-      />
-      <Stack.Screen name="(tabs)" />
-    </Stack>
-  );
-}
+export default function TabsLayout() {
+  const theme = useTheme();
 
-export function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
@@ -164,6 +153,17 @@ export function TabsLayout() {
   );
 }
 
+const createDynamicStyles = (theme) => StyleSheet.create({
+  indicator: {
+    position: 'absolute',
+    bottom: -8,
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: theme.colors.accent.main,
+  }
+});
+
 const styles = StyleSheet.create({
   iconContainer: {
     width: 52,
@@ -174,12 +174,4 @@ const styles = StyleSheet.create({
   activeIconContainer: {
     transform: [{ scale: 1.1 }],
   },
-  indicator: {
-    position: 'absolute',
-    bottom: -8,
-    width: 5,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: theme.colors.accent.main,
-  }
 });

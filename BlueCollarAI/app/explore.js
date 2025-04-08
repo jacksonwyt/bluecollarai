@@ -18,7 +18,7 @@ import Card from './components/ui/Card';
 import Header from './components/ui/Header';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
 export default function ExploreScreen() {
   const [activeTab, setActiveTab] = useState('jobs');

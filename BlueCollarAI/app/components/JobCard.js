@@ -2,9 +2,12 @@ import React from 'react';
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { theme } from '../theme';
+import { useTheme } from '../theme';
 
 const JobCard = ({ job, onPress, style }) => {
+  const theme = useTheme();
+  const styles = createStyles(theme);
+
   // Format the date
   const formatDate = (dateString) => {
     const date = new Date(dateString);
@@ -68,7 +71,7 @@ const JobCard = ({ job, onPress, style }) => {
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   container: {
     backgroundColor: theme.colors.neutral[50],
     borderRadius: 12,

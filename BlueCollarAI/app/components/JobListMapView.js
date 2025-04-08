@@ -1,7 +1,7 @@
 import { View, Text, Animated, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { useState, useRef, useEffect } from 'react';
 import { MaterialIcons } from '@expo/vector-icons';
-import { theme } from '../theme';
+import { useTheme } from '../theme';
 import JobMap from './JobMap';
 import Card from './ui/Card.js';
 
@@ -9,42 +9,50 @@ const { height, width } = Dimensions.get('window');
 const BOTTOM_SHEET_MIN_HEIGHT = 80;
 const BOTTOM_SHEET_MAX_HEIGHT = height * 0.6;
 
-export const JobListItem = ({ job, isSelected, onPress }) => (
-  <Card 
-    style={[styles.jobCard, isSelected && styles.selectedJobCard]} 
-    onPress={onPress}
-    variant="glass"
-    noPadding={false}
-    floating={false}
-  >
-    <View style={styles.jobHeader}>
-      <View>
-        <Text style={styles.jobTitle}>{job.title}</Text>
-        <Text style={styles.jobLocation}>{job.location}</Text>
-      </View>
-      <Text style={styles.jobBudget}>${job.budget}</Text>
-    </View>
-    
-    <View style={styles.jobDetails}>
-      <View style={styles.jobDetail}>
-        <MaterialIcons name="category" size={16} color={theme.colors.neutral[600]} />
-        <Text style={styles.jobDetailText}>{job.category}</Text>
+export const JobListItem = ({ job, isSelected, onPress }) => {
+  const theme = useTheme();
+  const styles = createJobListItemStyles(theme);
+
+  return (
+    <Card 
+      style={[styles.jobCard, isSelected && styles.selectedJobCard]} 
+      onPress={onPress}
+      variant="glass"
+      noPadding={false}
+      floating={false}
+    >
+      <View style={styles.jobHeader}>
+        <View>
+          <Text style={styles.jobTitle}>{job.title}</Text>
+          <Text style={styles.jobLocation}>{job.location}</Text>
+        </View>
+        <Text style={styles.jobBudget}>${job.budget}</Text>
       </View>
       
-      <View style={styles.jobDetail}>
-        <MaterialIcons name="schedule" size={16} color={theme.colors.neutral[600]} />
-        <Text style={styles.jobDetailText}>{job.duration || 'Flexible'}</Text>
+      <View style={styles.jobDetails}>
+        <View style={styles.jobDetail}>
+          <MaterialIcons name="category" size={16} color={theme.colors.neutral[600]} />
+          <Text style={styles.jobDetailText}>{job.category}</Text>
+        </View>
+        
+        <View style={styles.jobDetail}>
+          <MaterialIcons name="schedule" size={16} color={theme.colors.neutral[600]} />
+          <Text style={styles.jobDetailText}>{job.duration || 'Flexible'}</Text>
+        </View>
+        
+        <View style={styles.jobDetail}>
+          <MaterialIcons name="location-on" size={16} color={theme.colors.neutral[600]} />
+          <Text style={styles.jobDetailText}>{job.distance} miles away</Text>
+        </View>
       </View>
-      
-      <View style={styles.jobDetail}>
-        <MaterialIcons name="location-on" size={16} color={theme.colors.neutral[600]} />
-        <Text style={styles.jobDetailText}>{job.distance} miles away</Text>
-      </View>
-    </View>
-  </Card>
-);
+    </Card>
+  );
+};
 
 const JobListMapView = ({ jobs, selectedJob, onJobSelect }) => {
+  const theme = useTheme();
+  const styles = createJobListMapViewStyles(theme);
+
   const [isExpanded, setIsExpanded] = useState(false);
   const animatedValue = useRef(new Animated.Value(BOTTOM_SHEET_MIN_HEIGHT)).current;
   
@@ -66,7 +74,8 @@ const JobListMapView = ({ jobs, selectedJob, onJobSelect }) => {
   
   useEffect(() => {
     if (selectedJob && isExpanded) {
-      toggleBottomSheet();
+      // If a job is selected from the map, collapse the sheet
+      // toggleBottomSheet(); // Commenting this out as it might be unintended auto-collapse
     }
   }, [selectedJob]);
 
@@ -133,46 +142,12 @@ const JobListMapView = ({ jobs, selectedJob, onJobSelect }) => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  bottomSheet: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'transparent',
-  },
-  bottomSheetContent: {
-    flex: 1,
-    borderTopLeftRadius: theme.borderRadius.xl,
-    borderTopRightRadius: theme.borderRadius.xl,
-    padding: 0,
-    overflow: 'hidden',
-    borderWidth: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
-  },
-  handle: {
-    width: 40,
-    height: 4,
-    backgroundColor: theme.colors.neutral[300],
-    borderRadius: theme.borderRadius.full,
-    alignSelf: 'center',
-    marginTop: theme.spacing.sm,
-  },
-  toggleButton: {
-    alignItems: 'center',
-    paddingVertical: theme.spacing.xs,
-  },
-  listContent: {
-    padding: theme.spacing.md,
-    paddingBottom: theme.spacing.xl * 2,
-  },
+const createJobListItemStyles = (theme) => StyleSheet.create({
   jobCard: {
     marginBottom: theme.spacing.sm,
     borderRadius: theme.borderRadius.lg,
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    padding: theme.spacing.md,
   },
   selectedJobCard: {
     borderColor: theme.colors.primary.main,
@@ -213,6 +188,44 @@ const styles = StyleSheet.create({
     marginLeft: theme.spacing.xs,
     fontSize: theme.typography.size.sm,
     color: theme.colors.neutral[600],
+  },
+});
+
+const createJobListMapViewStyles = (theme) => StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  bottomSheet: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'transparent',
+  },
+  bottomSheetContent: {
+    flex: 1,
+    borderTopLeftRadius: theme.borderRadius.xl,
+    borderTopRightRadius: theme.borderRadius.xl,
+    padding: 0,
+    overflow: 'hidden',
+    borderWidth: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
+  },
+  handle: {
+    width: 40,
+    height: 4,
+    backgroundColor: theme.colors.neutral[300],
+    borderRadius: theme.borderRadius.full,
+    alignSelf: 'center',
+    marginTop: theme.spacing.sm,
+  },
+  toggleButton: {
+    alignItems: 'center',
+    paddingVertical: theme.spacing.xs,
+  },
+  listContent: {
+    padding: theme.spacing.md,
+    paddingBottom: theme.spacing.xl * 2,
   },
   floatingDetail: {
     position: 'absolute',

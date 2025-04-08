@@ -1,8 +1,8 @@
 import React from 'react';
-import { Tabs, Stack } from 'expo-router';
+import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { View, StyleSheet, Platform } from 'react-native';
-import theme from '../theme';
+import { useTheme } from '../theme';
 
 // Import BlurView with try/catch to handle potential issues
 let BlurView;
@@ -32,19 +32,20 @@ const TabBarBackground = () => {
   return null;
 };
 
-export default function ClientTabLayout() {
-  return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-      }}
-    >
-      <Stack.Screen name="(tabs)" />
-    </Stack>
-  );
-}
+export default function TabsLayout() {
+  const theme = useTheme();
 
-export function TabsLayout() {
+  const dynamicStyles = StyleSheet.create({
+    indicator: {
+      position: 'absolute',
+      bottom: -8,
+      width: 5,
+      height: 5,
+      borderRadius: 3,
+      backgroundColor: theme.colors.accent.main,
+    }
+  });
+
   return (
     <Tabs
       screenOptions={{
@@ -154,11 +155,5 @@ const styles = StyleSheet.create({
     transform: [{ scale: 1.1 }],
   },
   indicator: {
-    position: 'absolute',
-    bottom: -8,
-    width: 5,
-    height: 5,
-    borderRadius: 3,
-    backgroundColor: theme.colors.accent.main,
   }
 });
