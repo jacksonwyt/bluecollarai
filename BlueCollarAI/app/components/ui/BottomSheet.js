@@ -15,7 +15,7 @@ try {
 
 const { height } = Dimensions.get('window');
 const MINIMUM_HEIGHT = theme.layout.bottomSheetHandleHeight;
-const MAXIMUM_HEIGHT = height * 0.9;
+const MAXIMUM_HEIGHT = height * 0.85;
 
 const BottomSheet = ({ 
   children, 
@@ -35,6 +35,7 @@ const BottomSheet = ({
   const lastGestureDy = useRef(0);
   const velocityY = useRef(0);
   const backdropOpacity = useRef(new Animated.Value(0)).current;
+  const scaleAnimation = useRef(new Animated.Value(isOpen ? 1 : 0.95)).current;
 
   // Convert snap points to pixel values
   const snapPointsPixels = snapPoints.map(point => {
@@ -83,6 +84,12 @@ const BottomSheet = ({
           toValue: 0.5,
           duration: 300,
           useNativeDriver: true,
+        }),
+        Animated.spring(scaleAnimation, {
+          toValue: 1,
+          tension: 50,
+          friction: 7,
+          useNativeDriver: true,
         })
       ]).start();
     } else {
@@ -96,6 +103,12 @@ const BottomSheet = ({
         Animated.timing(backdropOpacity, {
           toValue: 0,
           duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleAnimation, {
+          toValue: 0.95,
+          tension: 50,
+          friction: 7,
           useNativeDriver: true,
         })
       ]).start();
@@ -198,7 +211,10 @@ const BottomSheet = ({
         style={[
           styles.container,
           {
-            transform: [{ translateY }],
+            transform: [
+              { translateY },
+              { scale: scaleAnimation }
+            ],
             borderTopLeftRadius: borderRadius,
             borderTopRightRadius: borderRadius,
           }
@@ -209,7 +225,7 @@ const BottomSheet = ({
           {...panResponder.panHandlers}
         >
           {blurBackground ? (
-            <BlurView intensity={90} style={styles.blurContainer}>
+            <BlurView intensity={80} style={styles.blurContainer}>
               {gradient && LinearGradient && (
                 <LinearGradient
                   colors={theme.colors.primary.gradient}
@@ -253,15 +269,7 @@ const BottomSheet = ({
               </View>
             </BlurView>
           ) : (
-            <View style={styles.container}>
-              {gradient && LinearGradient && (
-                <LinearGradient
-                  colors={theme.colors.primary.gradient}
-                  start={{ x: 0, y: 1 }}
-                  end={{ x: 1, y: 0 }}
-                  style={[StyleSheet.absoluteFill, { opacity: 0.03 }]}
-                />
-              )}
+            <>
               <View style={styles.handleContainer}>
                 <Animated.View 
                   style={[
@@ -295,7 +303,7 @@ const BottomSheet = ({
               <View style={styles.childrenContainer}>
                 {children}
               </View>
-            </View>
+            </>
           )}
         </View>
       </Animated.View>
@@ -305,44 +313,48 @@ const BottomSheet = ({
 
 const styles = StyleSheet.create({
   overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: theme.colors.neutral[900],
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    zIndex: 1,
   },
   container: {
     position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    height: MAXIMUM_HEIGHT,
-    backgroundColor: 'transparent',
+    left: 8,
+    right: 8,
+    bottom: 8,
+    maxHeight: MAXIMUM_HEIGHT,
+    zIndex: 2,
+    ...theme.shadows.xl,
+    borderRadius: theme.borderRadius.xl,
     overflow: 'hidden',
   },
   content: {
     flex: 1,
+    borderRadius: theme.borderRadius.xl,
     overflow: 'hidden',
   },
   blurContainer: {
     flex: 1,
-    backgroundColor: theme.colors.neutral[100],
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
   },
   handleContainer: {
-    width: '100%',
-    paddingVertical: theme.spacing.sm,
-    alignItems: 'center',
+    height: MINIMUM_HEIGHT,
     justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: theme.spacing.xs,
   },
   handle: {
-    width: 40, // Set a fixed width here
+    width: 40,
     height: 4,
-    backgroundColor: theme.colors.neutral[400],
     borderRadius: theme.borderRadius.full,
+    backgroundColor: theme.colors.neutral[400],
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: theme.spacing.lg,
-    paddingBottom: theme.spacing.md,
+    paddingVertical: theme.spacing.md,
   },
   title: {
     fontSize: theme.typography.size.lg,
@@ -350,17 +362,17 @@ const styles = StyleSheet.create({
     color: theme.colors.neutral[900],
   },
   closeButton: {
-    width: 32,
     height: 32,
-    borderRadius: 16,
+    width: 32,
+    borderRadius: theme.borderRadius.full,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: theme.colors.neutral[200],
   },
   childrenContainer: {
     flex: 1,
-    paddingHorizontal: theme.spacing.md,
-  }
+    padding: theme.spacing.md,
+  },
 });
 
 export default BottomSheet;

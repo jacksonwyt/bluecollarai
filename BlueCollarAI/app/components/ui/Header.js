@@ -1,17 +1,10 @@
-import { View, Text, TouchableOpacity, Animated, StyleSheet, Platform, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Platform } from 'react-native';
 import { useState, useRef, useEffect } from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BlurView } from 'expo-blur';
 import { MaterialIcons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import { theme } from '../../theme';
-import Input from './Input.js';
-
-// Import BlurView with try/catch to handle potential issues
-let BlurView;
-try {
-  BlurView = require('expo-blur').BlurView;
-} catch (error) {
-  console.warn('expo-blur is not available:', error);
-}
+import theme from '../../theme';
+import Card from './Card';
 
 // Import LinearGradient with try/catch to handle potential issues
 let LinearGradient;
@@ -21,401 +14,291 @@ try {
   console.warn('expo-linear-gradient is not available:', error);
 }
 
-const Header = ({
+const Header = ({ 
   title,
   subtitle,
-  showSearch = false,
-  showFilter = false,
-  onSearch,
-  onFilter,
+  leftIcon,
+  rightIcon,
+  onLeftPress,
+  onRightPress,
   transparent = false,
-  scrollOffset = 0,
-  leftAction,
-  rightAction,
-  style,
-  variant = 'primary', // 'primary', 'glass', 'light'
-  centerTitle = false
+  floating = false,
+  minimal = false,
+  hideSubtitle = false,
+  variant = 'default'
 }) => {
-  const [isSearchVisible, setIsSearchVisible] = useState(false);
-  const [searchText, setSearchText] = useState('');
-  const searchHeight = useRef(new Animated.Value(0)).current;
-  const searchOpacity = useRef(new Animated.Value(0)).current;
-  const headerOpacity = useRef(new Animated.Value(transparent ? 0 : 1)).current;
-  const headerHeight = useRef(new Animated.Value(Platform.OS === 'ios' ? 90 : 70)).current;
-  const iconScale = useRef(new Animated.Value(1)).current;
-
+  const insets = useSafeAreaInsets();
+  const scrollY = useRef(new Animated.Value(0)).current;
+  const [isScrolling, setIsScrolling] = useState(false);
+  
+  const floatingAnim = useRef(new Animated.Value(0)).current;
+  
   useEffect(() => {
-    if (transparent) {
-      const toValue = Math.min(scrollOffset / 100, 1);
-      Animated.spring(headerOpacity, {
-        toValue,
-        tension: 50,
-        friction: 7,
-        useNativeDriver: true,
-      }).start();
+    if (floating) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(floatingAnim, {
+            toValue: 1,
+            duration: 2000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(floatingAnim, {
+            toValue: 0,
+            duration: 2000,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
     }
-  }, [scrollOffset, transparent]);
+  }, [floating]);
 
-  const toggleSearch = () => {
-    Haptics.selectionAsync();
-    const toValue = isSearchVisible ? 0 : 56;
-    const opacityToValue = isSearchVisible ? 0 : 1;
-    const heightToValue = isSearchVisible 
-      ? (Platform.OS === 'ios' ? 90 : 70)
-      : (Platform.OS === 'ios' ? 146 : 126);
-
-    Animated.parallel([
-      Animated.spring(searchHeight, {
-        toValue,
-        tension: 50,
-        friction: 7,
-        useNativeDriver: false,
-      }),
-      Animated.timing(searchOpacity, {
-        toValue: opacityToValue,
-        duration: 200,
-        useNativeDriver: false,
-      }),
-      Animated.spring(headerHeight, {
-        toValue: heightToValue,
-        tension: 50,
-        friction: 7,
-        useNativeDriver: false,
-      }),
-    ]).start();
-
-    if (isSearchVisible && searchText) {
-      setSearchText('');
-      onSearch?.('');
-    }
-
-    setIsSearchVisible(!isSearchVisible);
+  const getHeaderOpacity = () => {
+    if (transparent) return 0;
+    return scrollY.interpolate({
+      inputRange: [0, 50],
+      outputRange: [0.8, 1],
+      extrapolate: 'clamp',
+    });
   };
 
-  const handleFilterPress = () => {
-    Haptics.selectionAsync();
-    
-    // Add scale animation
-    Animated.sequence([
-      Animated.timing(iconScale, {
-        toValue: 0.8,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.spring(iconScale, {
-        toValue: 1,
-        friction: 3,
-        tension: 40,
-        useNativeDriver: true,
-      }),
-    ]).start();
-    
-    onFilter?.();
+  const getHeaderHeight = () => {
+    return scrollY.interpolate({
+      inputRange: [0, 100],
+      outputRange: [100, 70],
+      extrapolate: 'clamp',
+    });
   };
 
-  const handleSearch = (text) => {
-    setSearchText(text);
-    onSearch?.(text);
+  const getTitleOpacity = () => {
+    return scrollY.interpolate({
+      inputRange: [0, 50],
+      outputRange: [1, minimal ? 0 : 1],
+      extrapolate: 'clamp',
+    });
+  };
+  
+  // Transform for floating animation
+  const getFloatingTransform = () => {
+    if (!floating) return [];
+    
+    return [{
+      translateY: floatingAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0, -6],
+      })
+    }];
   };
 
-  const renderIconButton = (icon, onPress, badge, position = 'right') => {
-    const buttonScale = useRef(new Animated.Value(1)).current;
-    
-    const handlePress = () => {
-      Animated.sequence([
-        Animated.timing(buttonScale, {
-          toValue: 0.8,
-          duration: 100,
-          useNativeDriver: true,
-        }),
-        Animated.spring(buttonScale, {
-          toValue: 1,
-          friction: 3,
-          tension: 40,
-          useNativeDriver: true,
-        }),
-      ]).start();
+  const renderContent = () => (
+    <Animated.View 
+      style={[
+        styles.container, 
+        { paddingTop: insets.top + (minimal ? 4 : 16) },
+        transparent && styles.transparentHeader,
+        minimal && styles.minimalContainer,
+        {
+          height: transparent ? 'auto' : getHeaderHeight(),
+          transform: getFloatingTransform(),
+        }
+      ]}
+    >
+      <View style={styles.leftContainer}>
+        {leftIcon && (
+          <TouchableOpacity 
+            onPress={onLeftPress} 
+            style={[styles.iconButton, minimal && styles.minimalIconButton]}
+            hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+          >
+            <MaterialIcons 
+              name={leftIcon} 
+              size={minimal ? 20 : 24} 
+              color={theme.colors.neutral[800]} 
+            />
+          </TouchableOpacity>
+        )}
+      </View>
       
-      onPress?.();
-    };
-    
-    return (
-      <TouchableOpacity
-        style={[styles.iconButton, position === 'left' && styles.leftIconButton]}
-        onPress={handlePress}
-        activeOpacity={0.7}
+      <Animated.View 
+        style={[
+          styles.titleContainer,
+          { opacity: getTitleOpacity() }
+        ]}
       >
-        <Animated.View style={[
-          styles.iconContainer,
-          { transform: [{ scale: buttonScale }] }
-        ]}>
-          <MaterialIcons
-            name={icon}
-            size={24}
-            color={getIconColor()}
-          />
-          {badge && (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{badge}</Text>
-            </View>
-          )}
-        </Animated.View>
-      </TouchableOpacity>
+        <Text style={[styles.title, minimal && styles.minimalTitle]}>{title}</Text>
+        {subtitle && !hideSubtitle && (
+          <Text style={styles.subtitle}>{subtitle}</Text>
+        )}
+      </Animated.View>
+      
+      <View style={styles.rightContainer}>
+        {rightIcon && (
+          <TouchableOpacity 
+            onPress={onRightPress}
+            style={[styles.iconButton, minimal && styles.minimalIconButton]} 
+            hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+          >
+            <MaterialIcons 
+              name={rightIcon} 
+              size={minimal ? 20 : 24} 
+              color={theme.colors.neutral[800]} 
+            />
+          </TouchableOpacity>
+        )}
+      </View>
+    </Animated.View>
+  );
+
+  // Minimal floating header with card
+  if (minimal && floating) {
+    return (
+      <Card 
+        style={styles.floatingCardHeader}
+        variant="glass"
+        floating={true}
+        elevation="lg"
+      >
+        {renderContent()}
+      </Card>
     );
-  };
-  
-  const getHeaderStyle = () => {
-    switch (variant) {
-      case 'glass':
-        return styles.glassHeader;
-      case 'light':
-        return styles.lightHeader;
-      default:
-        return styles.primaryHeader;
-    }
-  };
-  
-  const getIconColor = () => {
-    switch (variant) {
-      case 'light':
-        return theme.colors.primary.main;
-      default:
-        return theme.colors.primary.contrast;
-    }
-  };
-  
-  const getTitleColor = () => {
-    switch (variant) {
-      case 'light':
-        return theme.colors.primary.main;
-      default:
-        return theme.colors.primary.contrast;
-    }
-  };
-  
-  const renderBackground = () => {
-    if (variant === 'glass' && Platform.OS === 'ios' && BlurView) {
-      return (
-        <BlurView intensity={80} tint="light" style={StyleSheet.absoluteFill} />
-      );
-    } else if (variant === 'primary' && LinearGradient) {
-      return (
+  }
+
+  // Glass effect header
+  if (variant === 'glass') {
+    return (
+      <Animated.View
+        style={[
+          styles.headerContainer,
+          { 
+            opacity: getHeaderOpacity(),
+            transform: getFloatingTransform(),
+          }
+        ]}
+      >
+        <BlurView 
+          intensity={90} 
+          style={[
+            StyleSheet.absoluteFill, 
+            { backgroundColor: 'rgba(255, 255, 255, 0.7)' }
+          ]} 
+        />
+        {renderContent()}
+      </Animated.View>
+    );
+  }
+
+  // Gradient header
+  if (variant === 'gradient' && LinearGradient) {
+    return (
+      <Animated.View
+        style={[
+          styles.headerContainer,
+          { 
+            opacity: getHeaderOpacity(),
+            transform: getFloatingTransform(),
+          }
+        ]}
+      >
         <LinearGradient
           colors={theme.colors.primary.gradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={StyleSheet.absoluteFill}
         />
-      );
-    }
-    
-    return null;
-  };
-
-  return (
-    <Animated.View style={[
-      styles.container,
-      getHeaderStyle(),
-      transparent && styles.transparentHeader,
-      { height: headerHeight },
-      style
-    ]}>
-      <Animated.View 
-        style={[
-          StyleSheet.absoluteFill,
-          { opacity: headerOpacity }
-        ]}
-      >
-        {renderBackground()}
+        {renderContent()}
       </Animated.View>
-      
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.mainHeader}>
-          {leftAction && renderIconButton(leftAction.icon, leftAction.onPress, leftAction.badge, 'left')}
-          
-          <View style={[
-            styles.titleContainer,
-            centerTitle && styles.centeredTitleContainer,
-            !leftAction && styles.noLeftAction,
-            (!rightAction && !showSearch && !showFilter) && styles.noRightAction
-          ]}>
-            <Text 
-              style={[
-                styles.title, 
-                { color: getTitleColor() },
-                centerTitle && styles.centeredTitle
-              ]}
-              numberOfLines={1}
-            >
-              {title}
-            </Text>
-            {subtitle && (
-              <Text 
-                style={[
-                  styles.subtitle, 
-                  { color: getTitleColor() },
-                  centerTitle && styles.centeredTitle
-                ]}
-                numberOfLines={1}
-              >
-                {subtitle}
-              </Text>
-            )}
-          </View>
-          
-          <View style={styles.actions}>
-            {showSearch && renderIconButton('search', toggleSearch)}
-            {showFilter && (
-              <Animated.View style={{ transform: [{ scale: iconScale }] }}>
-                {renderIconButton('tune', handleFilterPress)}
-              </Animated.View>
-            )}
-            {rightAction && renderIconButton(rightAction.icon, rightAction.onPress, rightAction.badge)}
-          </View>
-        </View>
+    );
+  }
 
-        {showSearch && (
-          <Animated.View
-            style={[
-              styles.searchContainer,
-              {
-                height: searchHeight,
-                opacity: searchOpacity,
-              },
-            ]}
-          >
-            <Input
-              placeholder="Search..."
-              value={searchText}
-              onChangeText={handleSearch}
-              style={styles.searchInput}
-              autoFocus={isSearchVisible}
-              returnKeyType="search"
-              clearButtonMode="while-editing"
-              icon="search"
-              variant={variant === 'light' ? 'outline' : 'default'}
-            />
-          </Animated.View>
-        )}
-      </SafeAreaView>
+  // Default header
+  return (
+    <Animated.View
+      style={[
+        styles.headerContainer,
+        { 
+          opacity: getHeaderOpacity(),
+          backgroundColor: theme.colors.neutral[100],
+          transform: getFloatingTransform(),
+        }
+      ]}
+    >
+      {renderContent()}
     </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  headerContainer: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    zIndex: 1000,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  primaryHeader: {
-    backgroundColor: theme.colors.primary.main,
-    borderBottomWidth: 0,
+    zIndex: 100,
     ...theme.shadows.md,
   },
-  glassHeader: {
-    backgroundColor: theme.colors.glass.light,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.2)',
-    ...theme.shadows.sm,
+  container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.lg,
+    paddingBottom: theme.spacing.md,
   },
-  lightHeader: {
-    backgroundColor: theme.colors.neutral[100],
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.neutral[200],
-    ...theme.shadows.sm,
+  minimalContainer: {
+    paddingBottom: theme.spacing.xs,
+    paddingHorizontal: theme.spacing.md,
   },
   transparentHeader: {
     backgroundColor: 'transparent',
-    borderBottomWidth: 0,
-    shadowOpacity: 0,
-    elevation: 0,
+    ...theme.shadows.none,
   },
-  mainHeader: {
-    height: 44,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing.md,
-    marginTop: Platform.OS === 'ios' ? 0 : theme.spacing.md,
+  leftContainer: {
+    width: 40,
+    alignItems: 'flex-start',
+  },
+  rightContainer: {
+    width: 40,
+    alignItems: 'flex-end',
   },
   titleContainer: {
     flex: 1,
-    justifyContent: 'center',
-    marginHorizontal: theme.spacing.sm,
-  },
-  centeredTitleContainer: {
     alignItems: 'center',
-  },
-  noLeftAction: {
-    marginLeft: theme.spacing.md,
-  },
-  noRightAction: {
-    marginRight: theme.spacing.md,
+    justifyContent: 'center',
   },
   title: {
     fontSize: theme.typography.size.xl,
     fontWeight: '600',
-    ...Platform.select({
-      ios: {
-        fontWeight: '700',
-      },
-    }),
-  },
-  centeredTitle: {
+    color: theme.colors.neutral[900],
     textAlign: 'center',
+  },
+  minimalTitle: {
+    fontSize: theme.typography.size.md,
   },
   subtitle: {
     fontSize: theme.typography.size.sm,
-    opacity: 0.8,
-    marginTop: 2,
-  },
-  actions: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    color: theme.colors.neutral[600],
+    marginTop: theme.spacing.xs,
+    textAlign: 'center',
   },
   iconButton: {
-    padding: theme.spacing.xs,
-  },
-  leftIconButton: {
-    marginRight: theme.spacing.xs,
-  },
-  iconContainer: {
-    width: 40,
     height: 40,
-    borderRadius: 20,
+    width: 40,
+    borderRadius: theme.borderRadius.full,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: theme.colors.neutral[200],
   },
-  badge: {
+  minimalIconButton: {
+    height: 32,
+    width: 32,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+  },
+  floatingCardHeader: {
     position: 'absolute',
-    top: 0,
-    right: 0,
-    backgroundColor: theme.colors.error.main,
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-  },
-  badgeText: {
-    color: theme.colors.error.contrast,
-    fontSize: theme.typography.size.xs,
-    fontWeight: 'bold',
-  },
-  searchContainer: {
-    paddingHorizontal: theme.spacing.md,
-    paddingBottom: theme.spacing.sm,
-    overflow: 'hidden',
-  },
-  searchInput: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    top: Platform.OS === 'ios' ? 40 : 15,
+    left: theme.spacing.lg,
+    right: theme.spacing.lg,
+    margin: 0,
+    padding: 0,
+    zIndex: 100,
+    borderRadius: theme.borderRadius.xl,
   },
 });
 

@@ -1,4 +1,4 @@
-import { View, StyleSheet, Dimensions, Platform } from 'react-native';
+import { View, StyleSheet, Dimensions, Platform, TouchableOpacity } from 'react-native';
 import MapView, { Marker, Callout, PROVIDER_DEFAULT } from 'react-native-maps';
 import { useState, useEffect, useRef } from 'react';
 import * as Location from 'expo-location';
@@ -14,61 +14,129 @@ const INITIAL_REGION = {
   longitudeDelta: 0.0421,
 };
 
-const MARKER_ANIMATION_DURATION = 300;
-
 export default function JobMap({ jobs, onMarkerPress, selectedJobId }) {
   const [region, setRegion] = useState(INITIAL_REGION);
   const [userLocation, setUserLocation] = useState(null);
   const mapRef = useRef(null);
   const markersRef = useRef({});
 
+  // Initialize map with user location
   useEffect(() => {
-    (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        console.error('Location permission denied');
-        return;
-      }
+    let isMounted = true;
+    
+    const getLocation = async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          console.error('Location permission denied');
+          return;
+        }
 
-      const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
-      });
-      
-      const newRegion = {
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
-        latitudeDelta: 0.0922,
-        longitudeDelta: 0.0421,
-      };
-      
-      setUserLocation(location.coords);
-      setRegion(newRegion);
-      
-      mapRef.current?.animateToRegion(newRegion, 1000);
-    })();
+        const location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+        
+        if (!isMounted) return;
+        
+        const newRegion = {
+          latitude: location.coords.latitude,
+          longitude: location.coords.longitude,
+          latitudeDelta: 0.0922,
+          longitudeDelta: 0.0421,
+        };
+        
+        setUserLocation(location.coords);
+        setRegion(newRegion);
+        
+        // Use timeout to ensure map is properly initialized before animation
+        setTimeout(() => {
+          if (mapRef.current && isMounted) {
+            mapRef.current.animateToRegion(newRegion, 500);
+          }
+        }, 500);
+      } catch (error) {
+        console.error('Error getting location:', error);
+      }
+    };
+
+    getLocation();
+    
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
+  // Handle selection of job marker
   useEffect(() => {
-    if (selectedJobId && markersRef.current[selectedJobId]) {
-      const marker = markersRef.current[selectedJobId];
-      
+    if (selectedJobId && jobs.length) {
       const selectedJob = jobs.find(job => job.id === selectedJobId);
       if (selectedJob) {
-        mapRef.current?.animateToRegion({
+        const region = {
           latitude: selectedJob.latitude,
           longitude: selectedJob.longitude,
           latitudeDelta: 0.01,
           longitudeDelta: 0.01,
-        }, 500);
+        };
         
-        Haptics.selectionAsync();
+        // Use timeout to ensure smooth animation
+        setTimeout(() => {
+          if (mapRef.current) {
+            mapRef.current.animateToRegion(region, 300);
+          }
+        }, 100);
+        
+        // Provide haptic feedback on selection
+        if (Platform.OS !== 'web') {
+          Haptics.selectionAsync();
+        }
       }
     }
-  }, [selectedJobId]);
+  }, [selectedJobId, jobs]);
 
   const handleMarkerPress = (job) => {
     onMarkerPress?.(job);
-    Haptics.selectionAsync();
+    // Provide haptic feedback on marker press
+    if (Platform.OS !== 'web') {
+      Haptics.selectionAsync();
+    }
+  };
+
+  const centerOnUserLocation = () => {
+    if (userLocation) {
+      mapRef.current?.animateToRegion({
+        latitude: userLocation.latitude,
+        longitude: userLocation.longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      }, 300);
+      
+      if (Platform.OS !== 'web') {
+        Haptics.selectionAsync();
+      }
+    }
+  };
+
+  // Simplified zoom functions with reduced haptic feedback calls
+  const zoomIn = () => {
+    if (mapRef.current) {
+      const currentRegion = mapRef.current.__lastRegion || region;
+      mapRef.current.animateToRegion({
+        ...currentRegion,
+        latitudeDelta: currentRegion.latitudeDelta / 1.5,
+        longitudeDelta: currentRegion.longitudeDelta / 1.5,
+      }, 200);
+    }
+  };
+
+  const zoomOut = () => {
+    if (mapRef.current) {
+      const currentRegion = mapRef.current.__lastRegion || region;
+      mapRef.current.animateToRegion({
+        ...currentRegion,
+        latitudeDelta: currentRegion.latitudeDelta * 1.5,
+        longitudeDelta: currentRegion.longitudeDelta * 1.5,
+      }, 200);
+    }
   };
 
   return (
@@ -79,22 +147,26 @@ export default function JobMap({ jobs, onMarkerPress, selectedJobId }) {
         provider={PROVIDER_DEFAULT}
         initialRegion={region}
         showsUserLocation={true}
-        showsMyLocationButton={true}
-        showsCompass={true}
-        mapPadding={{ top: 100, right: 0, bottom: 100, left: 0 }}
+        showsCompass={false}
+        mapPadding={{ top: 10, right: 10, bottom: 10, left: 10 }}
         onRegionChangeComplete={setRegion}
         customMapStyle={theme.mapStyle}
+        rotateEnabled={true}
+        pitchEnabled={true}
+        moveOnMarkerPress={false} // Disable auto-centering on marker press for more control
       >
         {jobs.map((job) => (
           <Marker
-            ref={ref => markersRef.current[job.id] = ref}
             key={job.id}
+            ref={ref => {
+              if (ref) markersRef.current[job.id] = ref;
+            }}
             coordinate={{
               latitude: job.latitude,
               longitude: job.longitude,
             }}
             onPress={() => handleMarkerPress(job)}
-            tracksViewChanges={false}
+            tracksViewChanges={false} // Improve performance
           >
             <View style={[
               styles.markerContainer,
@@ -112,6 +184,33 @@ export default function JobMap({ jobs, onMarkerPress, selectedJobId }) {
           </Marker>
         ))}
       </MapView>
+      
+      {/* Controls with increased touch area for better UX */}
+      <View style={styles.floatingControls}>
+        <TouchableOpacity 
+          style={styles.controlButton} 
+          onPress={centerOnUserLocation}
+          hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+        >
+          <MaterialIcons name="my-location" size={24} color={theme.colors.primary.main} />
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.controlButton} 
+          onPress={zoomIn}
+          hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+        >
+          <MaterialIcons name="add" size={24} color={theme.colors.primary.main} />
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.controlButton} 
+          onPress={zoomOut}
+          hitSlop={{ top: 10, right: 10, bottom: 10, left: 10 }}
+        >
+          <MaterialIcons name="remove" size={24} color={theme.colors.primary.main} />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -132,11 +231,28 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: theme.colors.primary.main,
     ...theme.shadows.md,
-    transform: [{ scale: 1 }],
   },
   selectedMarker: {
     backgroundColor: theme.colors.primary.main,
     borderColor: theme.colors.primary.contrast,
     transform: [{ scale: 1.2 }],
+  },
+  floatingControls: {
+    position: 'absolute',
+    right: theme.spacing.lg,
+    bottom: theme.spacing.xl * 2,
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.sm,
+  },
+  controlButton: {
+    width: 44,
+    height: 44,
+    borderRadius: theme.borderRadius.full,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    ...theme.shadows.md,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

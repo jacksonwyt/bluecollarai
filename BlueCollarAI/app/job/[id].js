@@ -378,45 +378,33 @@ export default function JobDetailsScreen() {
           </View>
           
           {/* Action buttons */}
-          {job.status === 'Open' && !hasApplied && !isAssigned ? (
-            <TouchableOpacity 
-              style={styles.applyButton}
-              onPress={handleApply}
-            >
-              {LinearGradient ? (
+          <View style={styles.actionContainer}>
+            {job.status === 'open' ? (
+              <TouchableOpacity 
+                style={styles.applyButton}
+                onPress={handleApply}
+              >
                 <LinearGradient
                   colors={theme.colors.primary.gradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
                   style={styles.applyButtonGradient}
                 >
-                  <Text style={styles.applyButtonText}>Apply for this Job</Text>
+                  <Text style={styles.applyButtonText}>Apply Now</Text>
                 </LinearGradient>
-              ) : (
-                <Text style={styles.applyButtonText}>Apply for this Job</Text>
-              )}
-            </TouchableOpacity>
-          ) : hasApplied && !isAssigned ? (
-            <View style={styles.appliedContainer}>
-              <View style={styles.statusIndicator}>
-                <Ionicons name="checkmark-circle" size={24} color={theme.colors.success.main} />
-              </View>
-              <View style={styles.statusMessage}>
-                <Text style={styles.statusMessageTitle}>Application Submitted</Text>
-                <Text style={styles.statusMessageSubtitle}>The client will review your profile</Text>
-              </View>
-            </View>
-          ) : isAssigned ? (
-            <View style={styles.assignedContainer}>
-              <View style={styles.statusIndicator}>
-                <Ionicons name="trophy" size={24} color="#FFD700" />
-              </View>
-              <View style={styles.statusMessage}>
-                <Text style={styles.statusMessageTitle}>You're Working on This Job</Text>
-                <Text style={styles.statusMessageSubtitle}>Check messages for coordination</Text>
-              </View>
-            </View>
-          ) : null}
+              </TouchableOpacity>
+            ) : job.status === 'in_progress' && job.isClient ? (
+              <TouchableOpacity 
+                style={styles.applyButton}
+                onPress={() => router.push('/payment-details?id=' + id)}
+              >
+                <LinearGradient
+                  colors={theme.colors.success.gradient}
+                  style={styles.applyButtonGradient}
+                >
+                  <Text style={styles.applyButtonText}>Pay Now</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            ) : null}
+          </View>
         </Animated.View>
       </Animated.ScrollView>
     </SafeAreaView>
@@ -798,5 +786,11 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: theme.typography.size.md,
     color: theme.colors.primary.main,
+  },
+  actionContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.lg,
   },
 });

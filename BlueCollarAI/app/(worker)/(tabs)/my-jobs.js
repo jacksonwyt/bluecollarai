@@ -1,63 +1,41 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  StyleSheet, 
-  View, 
-  Text, 
-  FlatList, 
-  TouchableOpacity, 
-  SafeAreaView, 
-  Animated, 
-  Platform 
+import {
+  StyleSheet,
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  SafeAreaView,
+  Animated,
 } from 'react-native';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
 import { theme } from '../../theme';
-import { mockApiCall, jobs } from '../../../api/mockData';
-import Card from '../../components/ui/Card';
-import Button from '../../components/ui/Button';
-import Header from '../../components/ui/Header';
+import { jobs } from '../../../api/mockData';
 
-// Try to import LinearGradient
-let LinearGradient;
-try {
-  LinearGradient = require('expo-linear-gradient').LinearGradient;
-} catch (error) {
-  console.warn('expo-linear-gradient is not available:', error);
-}
-
-// For demo, we'll assume the current worker is w1
+// Mock worker ID
 const currentWorkerId = 'w1';
 
-// Job status badge component
+// StatusBadge component
 const StatusBadge = ({ status }) => {
-  let statusColors;
-
-  switch (status) {
-    case 'Applied':
-      statusColors = theme.colors.warning;
-      break;
-    case 'In Progress':
-      statusColors = theme.colors.accent;
-      break;
-    case 'Completed':
-      statusColors = theme.colors.success;
-      break;
-    default:
-      statusColors = theme.colors.neutral;
-  }
+  const statusStyles = {
+    Applied: { bg: 'rgba(245, 158, 11, 0.1)', text: '#F59E0B' },
+    'In Progress': { bg: 'rgba(59, 130, 246, 0.1)', text: '#3B82F6' },
+    Completed: { bg: 'rgba(16, 185, 129, 0.1)', text: '#10B981' },
+  }[status] || { bg: 'rgba(160, 174, 192, 0.1)', text: '#A0AEC0' };
 
   return (
-    <View style={[styles.statusBadge, { backgroundColor: statusColors.main }]}>
-      <Text style={styles.statusText}>{status}</Text>
+    <View style={[styles.statusBadge, { backgroundColor: statusStyles.bg }]}>
+      <Text style={[styles.statusText, { color: statusStyles.text }]}>{status}</Text>
     </View>
   );
 };
 
-// Job card component
+// JobCard component
 const JobCard = ({ job, onPress, index }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
-  
+
   useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
@@ -71,208 +49,110 @@ const JobCard = ({ job, onPress, index }) => {
         duration: 500,
         delay: index * 100,
         useNativeDriver: true,
-      })
+      }),
     ]).start();
-  }, []);
-  
-  // Determine job status for this worker
-  let status = 'Applied';
-  if (job.assignedWorker === currentWorkerId) {
-    status = job.status === 'Completed' ? 'Completed' : 'In Progress';
-  }
-  
-  const getButtonVariant = () => {
-    switch(status) {
-      case 'In Progress':
-        return 'primary';
-      case 'Applied':
-        return 'outline';
-      default:
-        return 'ghost';
-    }
+  }, [index]);
+
+  const status = job.assignedWorker === currentWorkerId
+    ? job.status === 'Completed' ? 'Completed' : 'In Progress'
+    : 'Applied';
+
+  const formatDate = (dateString) => {
+    const options = { year: 'numeric', month: 'short', day: 'numeric' };
+    return new Date(dateString).toLocaleDateString(undefined, options);
   };
 
   return (
-    <Animated.View style={[
-      styles.jobCardContainer,
-      {
-        opacity: fadeAnim,
-        transform: [{ translateY: slideAnim }]
-      }
-    ]}>
-      <Card 
-        variant={status === 'Completed' ? 'glass' : 'elevated'}
-        style={styles.jobCard}
-      >
-        <TouchableOpacity 
-          style={styles.cardTouchable}
-          onPress={onPress}
-          activeOpacity={0.7}
-        >
-          <View style={styles.jobHeader}>
-            <Text style={styles.jobTitle}>{job.title}</Text>
+    <Animated.View
+      style={[
+        styles.transactionCard,
+        { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
+      ]}
+    >
+      <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
+        <View style={styles.jobContent}>
+          <View style={styles.transactionIconContainer}>
+            <MaterialIcons name="work" size={24} color={theme.colors.primary.main} />
+          </View>
+          <View style={styles.transactionDetails}>
+            <Text style={styles.transactionTitle}>{job.title}</Text>
+            <Text style={styles.transactionSubtitle}>Client: {job.client || 'N/A'}</Text>
+            <Text style={styles.transactionDate}>{formatDate(job.datePosted)}</Text>
+          </View>
+          <View style={styles.transactionAmountContainer}>
+            <Text style={styles.transactionAmount}>${job.budget}</Text>
             <StatusBadge status={status} />
           </View>
-          
-          <View style={styles.jobDetails}>
-            <View style={styles.jobDetail}>
-              <MaterialIcons name="location-on" size={16} color={theme.colors.neutral[600]} />
-              <Text style={styles.jobDetailText}>{job.location}</Text>
-            </View>
-            
-            <View style={styles.jobDetail}>
-              <MaterialIcons name="attach-money" size={16} color={theme.colors.neutral[600]} />
-              <Text style={styles.jobDetailText}>${job.budget}</Text>
-            </View>
-            
-            <View style={styles.jobDetail}>
-              <MaterialIcons name="event" size={16} color={theme.colors.neutral[600]} />
-              <Text style={styles.jobDetailText}>Posted: {job.datePosted}</Text>
-            </View>
-          </View>
-          
-          <Text style={styles.jobDescription} numberOfLines={2}>
-            {job.description}
-          </Text>
-          
-          <View style={styles.jobFooter}>
-            {status === 'Applied' && (
-              <Button
-                variant="outline"
-                icon="close"
-                size="sm"
-                onPress={() => {}}
-                style={styles.buttonContainer}
-              >
-                Cancel Application
-              </Button>
-            )}
-            
-            {status === 'In Progress' && (
-              <Button
-                variant="primary"
-                icon="check-circle"
-                size="sm"
-                gradient
-                onPress={() => {}}
-                style={styles.buttonContainer}
-              >
-                Mark as Complete
-              </Button>
-            )}
-            
-            {status === 'Completed' && (
-              <View style={styles.completedInfo}>
-                <MaterialIcons name="check-circle" size={20} color={theme.colors.success.main} />
-                <Text style={styles.completedText}>Completed on {job.completedDate || 'N/A'}</Text>
-              </View>
-            )}
-            
-            <Button
-              variant="accent"
-              icon="chat"
-              size="sm"
-              style={styles.messageButton}
-              onPress={() => router.push(`/conversation?jobId=${job.id}`)}
-            />
-          </View>
-        </TouchableOpacity>
-      </Card>
+        </View>
+        <View style={styles.jobActions}>
+          {status === 'Applied' && (
+            <TouchableOpacity onPress={() => {}} style={styles.actionIcon}>
+              <MaterialIcons name="close" size={20} color={theme.colors.error.main} />
+            </TouchableOpacity>
+          )}
+          {status === 'In Progress' && (
+            <TouchableOpacity onPress={() => {}} style={styles.actionIcon}>
+              <MaterialIcons name="check" size={20} color={theme.colors.success.main} />
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            onPress={() => router.push(`/conversation?jobId=${job.id}`)}
+            style={styles.actionIcon}
+          >
+            <MaterialIcons name="chat" size={20} color={theme.colors.primary.main} />
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
     </Animated.View>
   );
 };
 
-// Screen tabs for job filtering
+// FilterTabs component
 const FilterTabs = ({ activeTab, setActiveTab }) => {
-  const indicatorPosition = useRef(new Animated.Value(0)).current;
-  const tabWidth = 100; // Approximate width of each tab
-  
-  useEffect(() => {
-    let position = 0;
-    if (activeTab === 'In Progress') position = 1;
-    if (activeTab === 'Completed') position = 2;
-    
-    Animated.spring(indicatorPosition, {
-      toValue: position * tabWidth,
-      tension: 60,
-      friction: 8,
-      useNativeDriver: true,
-    }).start();
-  }, [activeTab]);
-  
+  const tabs = ['Applied', 'In Progress', 'Completed'];
   return (
-    <View style={styles.tabsContainer}>
-      <Animated.View 
-        style={[
-          styles.tabIndicator, 
-          { transform: [{ translateX: indicatorPosition }] }
-        ]}
-      />
-      <TabButton 
-        title="Applied" 
-        active={activeTab === 'Applied'} 
-        onPress={() => setActiveTab('Applied')} 
-      />
-      <TabButton 
-        title="In Progress" 
-        active={activeTab === 'In Progress'} 
-        onPress={() => setActiveTab('In Progress')} 
-      />
-      <TabButton 
-        title="Completed" 
-        active={activeTab === 'Completed'} 
-        onPress={() => setActiveTab('Completed')} 
-      />
+    <View style={styles.tabs}>
+      {tabs.map((tab) => (
+        <TouchableOpacity
+          key={tab}
+          style={[styles.tab, activeTab === tab && styles.activeTab]}
+          onPress={() => setActiveTab(tab)}
+        >
+          <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
+            {tab}
+          </Text>
+        </TouchableOpacity>
+      ))}
     </View>
   );
 };
 
-const TabButton = ({ title, active, onPress }) => (
-  <TouchableOpacity
-    style={styles.filterTab}
-    onPress={onPress}
-  >
-    <Text style={[
-      styles.filterTabText, 
-      active && styles.activeFilterTabText
-    ]}>
-      {title}
-    </Text>
-  </TouchableOpacity>
-);
-
+// Main MyJobsScreen component
 export default function MyJobsScreen() {
   const [activeTab, setActiveTab] = useState('Applied');
   const [myJobs, setMyJobs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const scrollY = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // In a real app, we would fetch data from the server
-    // For demo, we'll use mock data
     const loadJobs = async () => {
       setLoading(true);
-      try {
-        // Filter jobs that the worker has applied to
-        const workerJobs = jobs.filter(job => 
-          job.applications.includes(currentWorkerId) || 
+      const workerJobs = jobs.filter(
+        (job) =>
+          job.applications.includes(currentWorkerId) ||
           job.assignedWorker === currentWorkerId
-        );
-        setMyJobs(workerJobs);
-      } catch (error) {
-        console.error('Error loading jobs:', error);
-      } finally {
-        setLoading(false);
-      }
+      );
+      setMyJobs(workerJobs);
+      setLoading(false);
     };
-
     loadJobs();
   }, []);
 
-  // Filter jobs based on selected tab
-  const filteredJobs = myJobs.filter(job => {
+  const filteredJobs = myJobs.filter((job) => {
     if (activeTab === 'Applied') {
-      return job.applications.includes(currentWorkerId) && job.assignedWorker !== currentWorkerId;
+      return (
+        job.applications.includes(currentWorkerId) &&
+        job.assignedWorker !== currentWorkerId
+      );
     } else if (activeTab === 'In Progress') {
       return job.assignedWorker === currentWorkerId && job.status !== 'Completed';
     } else if (activeTab === 'Completed') {
@@ -281,214 +161,209 @@ export default function MyJobsScreen() {
     return false;
   });
 
-  return (
-    <View style={styles.container}>
-      <Header 
-        title="My Jobs"
-        leftAction={{
-          icon: 'arrow-back',
-          onPress: () => router.back(),
-        }}
-        rightAction={{
-          icon: 'filter-list',
-          onPress: () => {},
-        }}
-        scrollOffset={scrollY.__getValue()}
-        variant="primary"
-      />
-      
-      <Animated.View style={styles.content}>
-        <FilterTabs activeTab={activeTab} setActiveTab={setActiveTab} />
+  const appliedCount = myJobs.filter(
+    (job) =>
+      job.applications.includes(currentWorkerId) &&
+      job.assignedWorker !== currentWorkerId
+  ).length;
+  const inProgressCount = myJobs.filter(
+    (job) => job.assignedWorker === currentWorkerId && job.status !== 'Completed'
+  ).length;
+  const completedCount = myJobs.filter(
+    (job) => job.assignedWorker === currentWorkerId && job.status === 'Completed'
+  ).length;
 
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <MaterialIcons name="hourglass-empty" size={48} color={theme.colors.neutral[400]} />
-            <Text style={styles.loadingText}>Loading jobs...</Text>
-          </View>
-        ) : filteredJobs.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <MaterialIcons name="work-off" size={60} color={theme.colors.neutral[400]} />
-            <Text style={styles.emptyText}>No {activeTab.toLowerCase()} jobs</Text>
-            {activeTab === 'Applied' && (
-              <Button
-                variant="primary"
-                icon="search"
-                gradient
-                onPress={() => router.push('/explore')}
-                style={{ marginTop: theme.spacing.md }}
-              >
-                Browse Available Jobs
-              </Button>
-            )}
-          </View>
-        ) : (
-          <Animated.FlatList
-            data={filteredJobs}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item, index }) => (
-              <JobCard 
-                job={item} 
-                index={index}
-                onPress={() => router.push(`/job/${item.id}`)} 
-              />
-            )}
-            contentContainerStyle={styles.listContent}
-            showsVerticalScrollIndicator={false}
-            onScroll={Animated.event(
-              [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-              { useNativeDriver: false }
-            )}
-            scrollEventThrottle={16}
-          />
-        )}
-      </Animated.View>
-    </View>
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.headerBackButton}
+          onPress={() => router.canGoBack() ? router.back() : null}
+        >
+          <MaterialIcons name="arrow-back" size={24} color={theme.colors.primary.main} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>My Jobs</Text>
+        <TouchableOpacity style={styles.headerButton}>
+          <MaterialIcons name="filter-list" size={24} color={theme.colors.primary.main} />
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.balanceCard}>
+        <Text style={styles.balanceLabel}>Job Overview</Text>
+        <Text style={styles.balanceAmount}>
+          Applied: {appliedCount} • In Progress: {inProgressCount} • Completed: {completedCount}
+        </Text>
+      </View>
+
+      <FilterTabs activeTab={activeTab} setActiveTab={setActiveTab} />
+
+      {loading ? (
+        <View style={styles.emptyState}>
+          <MaterialIcons name="hourglass-empty" size={48} color="#CBD5E0" />
+          <Text style={styles.emptyStateText}>Loading jobs...</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredJobs}
+          renderItem={({ item, index }) => (
+            <JobCard
+              job={item}
+              index={index}
+              onPress={() => router.push(`/job/${item.id}`)}
+            />
+          )}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.transactionsList}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <MaterialIcons name="work-off" size={48} color="#CBD5E0" />
+              <Text style={styles.emptyStateText}>No {activeTab.toLowerCase()} jobs</Text>
+              {activeTab === 'Applied' && (
+                <TouchableOpacity
+                  onPress={() => router.push('/explore')}
+                  style={styles.withdrawButton}
+                >
+                  <Text style={styles.withdrawButtonText}>Browse Available Jobs</Text>
+                  <MaterialIcons name="keyboard-arrow-right" size={20} color="#FFFFFF" />
+                </TouchableOpacity>
+              )}
+            </View>
+          }
+        />
+      )}
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.colors.neutral[100],
-  },
-  content: {
-    flex: 1,
-    marginTop: Platform.OS === 'ios' ? 90 : 70,
-  },
-  tabsContainer: {
+  container: { flex: 1, backgroundColor: '#F7FAFC' },
+  header: {
     flexDirection: 'row',
-    backgroundColor: theme.colors.neutral[100],
-    paddingVertical: theme.spacing.sm,
-    paddingHorizontal: theme.spacing.lg,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: theme.colors.neutral[200],
-    position: 'relative',
+    borderBottomColor: 'rgba(0,0,0,0.05)',
   },
-  tabIndicator: {
-    position: 'absolute',
-    bottom: 0,
-    left: theme.spacing.lg,
-    width: 100, // Match with tabWidth in component
-    height: 3,
-    backgroundColor: theme.colors.primary.main,
-    borderTopLeftRadius: 3,
-    borderTopRightRadius: 3,
-  },
-  filterTab: {
-    flex: 1,
-    paddingVertical: theme.spacing.sm,
-    alignItems: 'center',
-  },
-  filterTabText: {
-    fontSize: theme.typography.size.md,
-    color: theme.colors.neutral[600],
-    fontWeight: '500',
-  },
-  activeFilterTabText: {
+  headerBackButton: { padding: 8 },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
     color: theme.colors.primary.main,
-    fontWeight: 'bold',
-  },
-  listContent: {
-    padding: theme.spacing.lg,
-    paddingBottom: theme.spacing.xxxl,
-  },
-  jobCardContainer: {
-    marginBottom: theme.spacing.md,
-  },
-  jobCard: {
-    overflow: 'hidden',
-  },
-  cardTouchable: {
     flex: 1,
+    textAlign: 'center',
   },
-  jobHeader: {
+  headerButton: { padding: 8 },
+  balanceCard: {
+    backgroundColor: theme.colors.primary.main,
+    margin: 16,
+    borderRadius: 12,
+    padding: 20,
+  },
+  balanceLabel: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.7)',
+    marginBottom: 8,
+  },
+  balanceAmount: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  withdrawButton: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: theme.spacing.sm,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignSelf: 'flex-start',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    marginTop: 16,
   },
-  jobTitle: {
-    fontSize: theme.typography.size.lg,
-    fontWeight: 'bold',
-    color: theme.colors.neutral[800],
-    flex: 1,
-    marginRight: theme.spacing.sm,
-  },
-  statusBadge: {
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xxs,
-    borderRadius: theme.borderRadius.full,
-  },
-  statusText: {
-    fontSize: theme.typography.size.xs,
-    color: theme.colors.neutral[100],
+  withdrawButtonText: {
+    color: '#FFFFFF',
     fontWeight: '500',
+    marginRight: 4,
   },
-  jobDetails: {
-    marginBottom: theme.spacing.sm,
-  },
-  jobDetail: {
+  tabs: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: theme.spacing.xs,
+    paddingHorizontal: 16,
+    marginBottom: 16,
   },
-  jobDetailText: {
-    fontSize: theme.typography.size.sm,
-    color: theme.colors.neutral[600],
-    marginLeft: theme.spacing.xs,
+  tab: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginRight: 8,
+    borderRadius: 20,
+    backgroundColor: '#E2E8F0',
   },
-  jobDescription: {
-    fontSize: theme.typography.size.md,
-    color: theme.colors.neutral[700],
-    marginBottom: theme.spacing.md,
-    lineHeight: 20,
+  activeTab: { backgroundColor: theme.colors.primary.main },
+  tabText: { fontSize: 14, color: '#4A5568' },
+  activeTabText: { color: '#FFFFFF', fontWeight: '500' },
+  transactionsList: { paddingHorizontal: 16, paddingBottom: 20 },
+  transactionCard: {
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
   },
-  jobFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  buttonContainer: {
-    flex: 1,
-    marginRight: theme.spacing.sm,
-  },
-  messageButton: {
+  jobContent: { flexDirection: 'row', alignItems: 'center' },
+  transactionIconContainer: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    padding: 0,
-  },
-  completedInfo: {
-    flex: 1,
-    flexDirection: 'row',
+    backgroundColor: '#F0F4F8',
     alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
   },
-  completedText: {
-    fontSize: theme.typography.size.sm,
-    color: theme.colors.success.dark,
-    marginLeft: theme.spacing.xs,
+  transactionDetails: { flex: 1 },
+  transactionTitle: {
+    fontSize: 16,
     fontWeight: '500',
+    color: theme.colors.primary.dark,
+    marginBottom: 4,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+  transactionSubtitle: {
+    fontSize: 14,
+    color: '#4A5568',
+    marginBottom: 4,
   },
-  loadingText: {
-    marginTop: theme.spacing.sm,
-    fontSize: theme.typography.size.md,
-    color: theme.colors.neutral[600],
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: theme.spacing.lg,
-  },
-  emptyText: {
-    fontSize: theme.typography.size.lg,
-    color: theme.colors.neutral[600],
+  transactionDate: { fontSize: 12, color: '#A0AEC0' },
+  transactionAmountContainer: { alignItems: 'flex-end' },
+  transactionAmount: {
+    fontSize: 16,
     fontWeight: 'bold',
-    marginTop: theme.spacing.md,
+    color: '#1A2A44',
+    marginBottom: 4,
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusText: { fontSize: 12, fontWeight: '500' },
+  jobActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    marginTop: 12,
+  },
+  actionIcon: { marginLeft: 12 },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+  },
+  emptyStateText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#A0AEC0',
   },
 });

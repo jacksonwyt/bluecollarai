@@ -4,10 +4,9 @@ import { ThemeProvider } from './theme';
 export default function RootLayout() {
   return (
     <ThemeProvider>
-      <Stack initialRouteName="role-selection" screenOptions={{ headerShown: false }}>
+      <Stack initialRouteName="index" screenOptions={{ headerShown: false }}>
         {/* Main entry screens */}
         <Stack.Screen name="index" />
-        <Stack.Screen name="role-selection" />
         
         {/* Auth screens */}
         <Stack.Screen name="auth/login" />

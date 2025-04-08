@@ -57,7 +57,6 @@ export default function ClientDashboard() {
   const [selectedMapItem, setSelectedMapItem] = useState(null);
   
   // Animation values
-  const scrollY = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const translateYAnim = useRef(new Animated.Value(20)).current;
   
@@ -105,12 +104,6 @@ export default function ClientDashboard() {
     loadData();
   }, []);
 
-  const headerOpacity = scrollY.interpolate({
-    inputRange: [0, 100],
-    outputRange: [0, 1],
-    extrapolate: 'clamp',
-  });
-
   const QuickAction = ({ icon, label, onPress, animValue }) => (
     <Animated.View style={{
       opacity: animValue,
@@ -128,14 +121,7 @@ export default function ClientDashboard() {
         accessibilityRole="button"
         accessibilityLabel={label}
       >
-        <LinearGradient
-          colors={theme.colors.primary.gradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.quickActionIcon}
-        >
-          <MaterialIcons name={icon} size={24} color={theme.colors.primary.contrast} />
-        </LinearGradient>
+        <MaterialIcons name={icon} size={28} color={theme.colors.primary.main} />
         <Text style={styles.quickActionLabel}>{label}</Text>
       </TouchableOpacity>
     </Animated.View>
@@ -258,25 +244,6 @@ export default function ClientDashboard() {
       </Animated.View>
     );
   };
-
-  const renderHeader = () => (
-    <Animated.View style={[
-      styles.animatedHeader,
-      { opacity: headerOpacity }
-    ]}>
-      {Platform.OS === 'ios' && BlurView ? (
-        <BlurView intensity={90} tint="light" style={StyleSheet.absoluteFill} />
-      ) : (
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: theme.colors.neutral[100] }]} />
-      )}
-      <SafeAreaView style={styles.headerContent}>
-        <Text style={styles.headerTitle}>Dashboard</Text>
-        <TouchableOpacity style={styles.headerButton}>
-          <MaterialIcons name="notifications" size={24} color={theme.colors.primary.main} />
-        </TouchableOpacity>
-      </SafeAreaView>
-    </Animated.View>
-  );
 
   const renderSection = ({ item: section, index }) => {
     switch (section.type) {
@@ -415,7 +382,20 @@ export default function ClientDashboard() {
 
   return (
     <View style={styles.container}>
-      {renderHeader()}
+      <SafeAreaView>
+        <View style={styles.header}>
+          <TouchableOpacity 
+            style={styles.headerBackButton}
+            onPress={() => router.canGoBack() ? router.back() : null}
+          >
+            <MaterialIcons name="arrow-back" size={24} color={theme.colors.primary.main} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Dashboard</Text>
+          <TouchableOpacity style={styles.headerButton}>
+            <MaterialIcons name="notifications" size={24} color={theme.colors.primary.main} />
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
 
       {loading ? (
         <View style={styles.centerContent}>
@@ -423,16 +403,11 @@ export default function ClientDashboard() {
           <Text style={styles.loadingText}>Loading...</Text>
         </View>
       ) : (
-        <Animated.FlatList
+        <FlatList
           data={sections}
           keyExtractor={(item) => item.id}
           renderItem={renderSection}
           contentContainerStyle={styles.content}
-          scrollEventThrottle={16}
-          onScroll={Animated.event(
-            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-            { useNativeDriver: false }
-          )}
           showsVerticalScrollIndicator={false}
         />
       )}
@@ -445,32 +420,30 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.neutral[100],
   },
-  animatedHeader: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: Platform.OS === 'ios' ? 90 : 70,
-    zIndex: 100,
-  },
-  headerContent: {
-    flex: 1,
+  header: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: theme.spacing.lg,
-    paddingTop: Platform.OS === 'ios' ? theme.spacing.md : 0,
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
+    backgroundColor: '#FFFFFF',
+  },
+  headerBackButton: {
+    padding: 8,
   },
   headerTitle: {
-    fontSize: theme.typography.size.xl,
+    fontSize: 20,
     fontWeight: 'bold',
     color: theme.colors.primary.main,
+    flex: 1,
+    textAlign: 'center',
   },
   headerButton: {
-    padding: theme.spacing.xs,
+    padding: 8,
   },
   content: {
-    paddingTop: Platform.OS === 'ios' ? 100 : 80,
     paddingBottom: theme.spacing.xxxl,
   },
   centerContent: {
@@ -484,14 +457,20 @@ const styles = StyleSheet.create({
     color: theme.colors.neutral[600],
   },
   quickActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+    flexDirection: 'column',
     paddingHorizontal: theme.spacing.lg,
     marginBottom: theme.spacing.lg,
+    marginTop: theme.spacing.md,
   },
   quickAction: {
+    width: '100%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: theme.borderRadius.md,
+    padding: theme.spacing.lg,
+    marginBottom: theme.spacing.md,
+    flexDirection: 'row',
     alignItems: 'center',
-    padding: theme.spacing.sm,
+    ...theme.shadows.sm,
   },
   quickActionIcon: {
     width: 60,
@@ -503,10 +482,10 @@ const styles = StyleSheet.create({
     ...theme.shadows.md,
   },
   quickActionLabel: {
-    fontSize: theme.typography.size.sm,
-    fontWeight: '500',
+    fontSize: theme.typography.size.lg,
+    fontWeight: '600',
     color: theme.colors.neutral[800],
-    marginTop: theme.spacing.xs,
+    marginLeft: theme.spacing.md,
   },
   sectionHeader: {
     flexDirection: 'row',

@@ -1,27 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, FlatList, TouchableOpacity, Image, SafeAreaView } from 'react-native';
 import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import theme, { COLORS, FONTS } from '../../theme';
+import { MaterialIcons, Ionicons } from '@expo/vector-icons';
+import theme from '../../theme';
 import { messages, users, jobs } from '../../../api/mockData';
 
-// For demo purposes, we'll assume the current user is worker w1
+// For demo purposes, assume the current user is worker 'w1'
 const currentUserId = 'w1';
 
-// Function to get unique conversation partners
+// Function to get unique conversations
 const getUniqueConversations = () => {
-  // Filter messages that involve the current user
   const userMessages = messages.filter(
     msg => msg.senderId === currentUserId || msg.receiverId === currentUserId
   );
   
-  // Get unique conversation partners
   const conversations = {};
   userMessages.forEach(msg => {
     const partnerId = msg.senderId === currentUserId ? msg.receiverId : msg.senderId;
     const jobId = msg.jobId;
-    
-    // Use a combination of partnerId and jobId as key
     const conversationKey = `${partnerId}_${jobId}`;
     
     if (!conversations[conversationKey] || new Date(msg.timestamp) > new Date(conversations[conversationKey].timestamp)) {
@@ -35,18 +31,16 @@ const getUniqueConversations = () => {
     }
   });
   
-  // Convert to array and sort by most recent
   return Object.values(conversations).sort((a, b) => 
     new Date(b.timestamp) - new Date(a.timestamp)
   );
 };
 
-// Message conversation card component
+// Conversation card component
 const ConversationCard = ({ conversation, onPress }) => {
   const partner = users.find(u => u.id === conversation.partnerId);
   const job = jobs.find(j => j.id === conversation.jobId);
   
-  // Format the timestamp
   const messageDate = new Date(conversation.timestamp);
   const today = new Date();
   const isToday = messageDate.getDate() === today.getDate() && 
@@ -57,28 +51,21 @@ const ConversationCard = ({ conversation, onPress }) => {
   const formattedDate = isToday ? formattedTime : messageDate.toLocaleDateString();
   
   return (
-    <TouchableOpacity 
-      style={[styles.conversationCard, !conversation.read && styles.unreadCard]} 
-      onPress={onPress}
-    >
+    <TouchableOpacity style={styles.conversationCard} onPress={onPress}>
       <Image source={{ uri: partner.profilePicture }} style={styles.partnerImage} />
-      
       <View style={styles.conversationInfo}>
-        <View style={styles.conversationHeader}>
-          <Text style={styles.partnerName}>{partner.name}</Text>
-          <Text style={styles.timestamp}>{formattedDate}</Text>
-        </View>
-        
+        <Text style={styles.partnerName}>{partner.name}</Text>
         <Text style={styles.jobTitle} numberOfLines={1}>
           Re: {job.title}
         </Text>
-        
-        <Text style={[styles.lastMessage, !conversation.read && styles.unreadMessage]} numberOfLines={1}>
+        <Text style={styles.lastMessage} numberOfLines={1}>
           {conversation.lastMessage}
         </Text>
       </View>
-      
-      {!conversation.read && <View style={styles.unreadIndicator} />}
+      <View style={styles.timestampContainer}>
+        <Text style={styles.timestamp}>{formattedDate}</Text>
+        {!conversation.read && <View style={styles.unreadIndicator} />}
+      </View>
     </TouchableOpacity>
   );
 };
@@ -88,8 +75,6 @@ export default function MessagesScreen() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // In a real app, we would fetch conversations from the server
-    // For demo, use our helper function with mock data
     const loadConversations = () => {
       setLoading(true);
       try {
@@ -101,9 +86,10 @@ export default function MessagesScreen() {
         setLoading(false);
       }
     };
-
     loadConversations();
   }, []);
+
+  const unreadCount = conversations.filter(c => !c.read).length;
 
   const navigateToConversation = (partnerId, jobId) => {
     router.push({
@@ -114,35 +100,47 @@ export default function MessagesScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()}>
+          <MaterialIcons name="arrow-back" size={24} color={theme.colors.primary.main} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Messages</Text>
+        <TouchableOpacity>
+          <MaterialIcons name="search" size={24} color={theme.colors.primary.main} />
+        </TouchableOpacity>
+      </View>
+
       {loading ? (
         <View style={styles.loadingContainer}>
           <Text>Loading messages...</Text>
         </View>
-      ) : conversations.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="chatbubble-ellipses-outline" size={60} color={COLORS.secondary.gray} />
-          <Text style={styles.emptyText}>No messages yet</Text>
-          <Text style={styles.emptySubtext}>
-            Messages from clients will appear here once you start receiving job inquiries
-          </Text>
-        </View>
       ) : (
         <>
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>Messages</Text>
+          <View style={styles.unreadCard}>
+            <Text style={styles.unreadLabel}>Unread Conversations</Text>
+            <Text style={styles.unreadCount}>{unreadCount}</Text>
           </View>
-          
-          <FlatList
-            data={conversations}
-            keyExtractor={(item, index) => `${item.partnerId}_${item.jobId}_${index}`}
-            renderItem={({ item }) => (
-              <ConversationCard 
-                conversation={item} 
-                onPress={() => navigateToConversation(item.partnerId, item.jobId)}
-              />
-            )}
-            contentContainerStyle={styles.listContent}
-          />
+          {conversations.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="chatbubble-ellipses-outline" size={48} color="#CBD5E0" />
+              <Text style={styles.emptyStateText}>No messages yet</Text>
+              <Text style={styles.emptySubtext}>
+                Messages from clients will appear here once you start receiving job inquiries
+              </Text>
+            </View>
+          ) : (
+            <FlatList
+              data={conversations}
+              keyExtractor={(item, index) => `${item.partnerId}_${item.jobId}_${index}`}
+              renderItem={({ item }) => (
+                <ConversationCard 
+                  conversation={item} 
+                  onPress={() => navigateToConversation(item.partnerId, item.jobId)}
+                />
+              )}
+              contentContainerStyle={styles.listContent}
+            />
+          )}
         </>
       )}
     </SafeAreaView>
@@ -152,105 +150,113 @@ export default function MessagesScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F7FA',
+    backgroundColor: '#F7FAFC',
   },
   header: {
-    padding: 15,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#EAEAEA',
-    backgroundColor: COLORS.primary.white,
+    borderBottomColor: 'rgba(0,0,0,0.05)',
   },
   headerTitle: {
-    fontSize: FONTS.sizes.subheader,
+    fontSize: 20,
     fontWeight: 'bold',
-    color: COLORS.primary.darkBlue,
+    color: theme.colors.primary.main,
+    flex: 1,
+    textAlign: 'center',
+  },
+  unreadCard: {
+    backgroundColor: theme.colors.primary.main,
+    margin: 16,
+    borderRadius: 12,
+    padding: 20,
+  },
+  unreadLabel: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.7)',
+    marginBottom: 8,
+  },
+  unreadCount: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
   },
   listContent: {
-    padding: 15,
+    paddingHorizontal: 16,
+    paddingBottom: 20,
   },
   conversationCard: {
     flexDirection: 'row',
-    backgroundColor: COLORS.primary.white,
-    borderRadius: 10,
-    padding: 15,
-    marginBottom: 15,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.18,
-    shadowRadius: 1.0,
-    elevation: 1
-  },
-  unreadCard: {
-    backgroundColor: '#F0F8FF', // Light blue tint for unread messages
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
   },
   partnerImage: {
     width: 50,
     height: 50,
     borderRadius: 25,
-    marginRight: 15,
+    marginRight: 12,
   },
   conversationInfo: {
     flex: 1,
   },
-  conversationHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 5,
-  },
   partnerName: {
-    fontSize: FONTS.sizes.body,
-    fontWeight: 'bold',
-    color: COLORS.primary.darkBlue,
-  },
-  timestamp: {
-    fontSize: FONTS.sizes.secondary,
-    color: COLORS.secondary.gray,
+    fontSize: 16,
+    fontWeight: '500',
+    color: theme.colors.primary.dark,
   },
   jobTitle: {
-    fontSize: FONTS.sizes.secondary,
-    color: COLORS.primary.lightBlue,
-    marginBottom: 5,
+    fontSize: 14,
+    color: '#4A5568',
+    marginTop: 4,
   },
   lastMessage: {
-    fontSize: FONTS.sizes.body,
-    color: COLORS.secondary.gray,
+    fontSize: 14,
+    color: '#4A5568',
+    marginTop: 4,
   },
-  unreadMessage: {
-    color: COLORS.primary.darkBlue,
-    fontWeight: '500',
+  timestampContainer: {
+    alignItems: 'flex-end',
+  },
+  timestamp: {
+    fontSize: 12,
+    color: '#A0AEC0',
   },
   unreadIndicator: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: COLORS.primary.lightBlue,
-    position: 'absolute',
-    top: 15,
-    right: 15,
+    backgroundColor: theme.colors.primary.main,
+    marginTop: 4,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
+  emptyState: {
     alignItems: 'center',
-    padding: 20,
+    justifyContent: 'center',
+    paddingVertical: 60,
   },
-  emptyText: {
-    fontSize: FONTS.sizes.subheader,
-    fontWeight: 'bold',
-    color: COLORS.primary.darkBlue,
-    marginTop: 10,
+  emptyStateText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: '#A0AEC0',
   },
   emptySubtext: {
-    fontSize: FONTS.sizes.body,
-    color: COLORS.secondary.gray,
+    marginTop: 8,
+    fontSize: 14,
+    color: '#A0AEC0',
     textAlign: 'center',
-    marginTop: 5,
-    maxWidth: '80%',
   },
 });

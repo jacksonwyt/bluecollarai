@@ -1,23 +1,24 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
   StyleSheet, 
   Animated, 
   TouchableOpacity, 
-  ScrollView,
   Dimensions,
-  SafeAreaView
+  StatusBar,
+  Platform
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { theme } from './theme';
 import { mockApiCall } from '../api/mockData';
 import JobListMapView from './components/JobListMapView';
+import Card from './components/ui/Card';
+import Header from './components/ui/Header';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 const { width, height } = Dimensions.get('window');
-const BOTTOM_SHEET_MIN_HEIGHT = 100;
-const BOTTOM_SHEET_MAX_HEIGHT = height * 0.6;
 
 export default function ExploreScreen() {
   const [activeTab, setActiveTab] = useState('jobs');
@@ -25,10 +26,8 @@ export default function ExploreScreen() {
   const [workers, setWorkers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedItem, setSelectedItem] = useState(null);
-  const [isBottomSheetExpanded, setIsBottomSheetExpanded] = useState(false);
   
-  const slideAnim = useRef(new Animated.Value(0)).current;
-  const bottomSheetAnim = useRef(new Animated.Value(BOTTOM_SHEET_MIN_HEIGHT)).current;
+  const slideAnim = React.useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const loadData = async () => {
@@ -49,24 +48,14 @@ export default function ExploreScreen() {
     loadData();
   }, []);
 
+  // Simple tab animation without complexity
   const animateTab = (tab) => {
-    Animated.spring(slideAnim, {
-      toValue: tab === 'jobs' ? 0 : width - 40,
-      tension: 50,
-      friction: 10,
+    Animated.timing(slideAnim, {
+      toValue: tab === 'jobs' ? 0 : width / 2 - 20,
+      duration: 250,
       useNativeDriver: true,
     }).start();
     setActiveTab(tab);
-  };
-
-  const toggleBottomSheet = () => {
-    Animated.spring(bottomSheetAnim, {
-      toValue: isBottomSheetExpanded ? BOTTOM_SHEET_MIN_HEIGHT : BOTTOM_SHEET_MAX_HEIGHT,
-      tension: 50,
-      friction: 7,
-      useNativeDriver: false,
-    }).start();
-    setIsBottomSheetExpanded(!isBottomSheetExpanded);
   };
 
   const ItemCard = ({ item, type }) => {
@@ -74,11 +63,13 @@ export default function ExploreScreen() {
     const isSelected = selectedItem?.id === item.id;
 
     return (
-      <TouchableOpacity
+      <Card
         style={[
           styles.card,
           isSelected && styles.selectedCard
         ]}
+        variant="glass"
+        elevation={isSelected ? "lg" : "md"}
         onPress={() => {
           setSelectedItem(item);
           router.push(isJob ? `/job/${item.id}` : `/worker/${item.id}`);
@@ -99,7 +90,7 @@ export default function ExploreScreen() {
           )}
         </View>
 
-        <Text style={styles.cardDescription}>
+        <Text style={styles.cardDescription} numberOfLines={2}>
           {isJob ? item.description : item.skills.join(', ')}
         </Text>
 
@@ -115,162 +106,104 @@ export default function ExploreScreen() {
             </Text>
           </View>
         </View>
-      </TouchableOpacity>
+      </Card>
     );
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => router.push('/')}
-          >
-            <MaterialIcons 
-              name="arrow-back" 
-              size={24} 
-              color={theme.colors.primary.contrast} 
-            />
-          </TouchableOpacity>
-          <Text style={styles.title}>Explore</Text>
-        </View>
-        <View style={styles.tabContainer}>
-          <Animated.View 
-            style={[
-              styles.tabIndicator,
-              { transform: [{ translateX: slideAnim }] }
-            ]} 
-          />
-          <TouchableOpacity 
-            style={styles.tab} 
-            onPress={() => animateTab('jobs')}
-          >
-            <MaterialIcons 
-              name="work" 
-              size={24} 
-              color={activeTab === 'jobs' ? theme.colors.primary.contrast : theme.colors.neutral[400]} 
-            />
-            <Text style={[
-              styles.tabText,
-              { color: activeTab === 'jobs' ? theme.colors.primary.contrast : theme.colors.neutral[400] }
-            ]}>
-              Jobs
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.tab} 
-            onPress={() => animateTab('workers')}
-          >
-            <MaterialIcons 
-              name="people" 
-              size={24} 
-              color={activeTab === 'workers' ? theme.colors.primary.contrast : theme.colors.neutral[400]} 
-            />
-            <Text style={[
-              styles.tabText,
-              { color: activeTab === 'workers' ? theme.colors.primary.contrast : theme.colors.neutral[400] }
-            ]}>
-              Workers
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <View style={styles.mapWrapper}>
-        <JobListMapView
-          jobs={activeTab === 'jobs' ? jobs : []}
-          workers={activeTab === 'workers' ? workers : []}
-          selectedItem={selectedItem}
-          onItemSelect={setSelectedItem}
+    <SafeAreaProvider>
+      <StatusBar barStyle="dark-content" />
+      <View style={styles.container}>
+        <Header
+          title="Explore"
+          leftIcon="arrow-back"
+          onLeftPress={() => router.push('/')}
+          variant="glass"
+          minimal={true}
+          floating={false}
+          hideSubtitle={true}
         />
-      </View>
-
-      <Animated.View style={[styles.bottomSheet, { height: bottomSheetAnim }]}>
-        <TouchableOpacity style={styles.bottomSheetHandle} onPress={toggleBottomSheet}>
-          <View style={styles.handle} />
-        </TouchableOpacity>
         
-        <ScrollView 
-          style={styles.cardsContainer}
-          showsVerticalScrollIndicator={false}
-        >
-          {loading ? (
-            <View style={styles.centerContent}>
+        <View style={styles.mapWrapper}>
+          <JobListMapView
+            jobs={activeTab === 'jobs' ? jobs : []}
+            workers={activeTab === 'workers' ? workers : []}
+            selectedJob={selectedItem}
+            onJobSelect={setSelectedItem}
+          />
+        </View>
+        
+        {/* Simplified tab container with stable animation */}
+        <View style={styles.tabsFloatingContainer}>
+          <Card 
+            style={styles.tabsCard}
+            variant="glass"
+            elevation="md"
+            floating={false}
+          >
+            <View style={styles.tabContainer}>
+              <Animated.View 
+                style={[
+                  styles.tabIndicator,
+                  { transform: [{ translateX: slideAnim }] }
+                ]}
+                pointerEvents="none" 
+              />
+              <TouchableOpacity 
+                style={styles.tab} 
+                onPress={() => animateTab('jobs')}
+                activeOpacity={0.7}
+              >
+                <MaterialIcons 
+                  name="work" 
+                  size={24} 
+                  color={activeTab === 'jobs' ? theme.colors.primary.main : theme.colors.neutral[400]} 
+                />
+                <Text style={[
+                  styles.tabText,
+                  { color: activeTab === 'jobs' ? theme.colors.primary.main : theme.colors.neutral[400] }
+                ]}>
+                  Jobs
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.tab} 
+                onPress={() => animateTab('workers')}
+                activeOpacity={0.7}
+              >
+                <MaterialIcons 
+                  name="people" 
+                  size={24} 
+                  color={activeTab === 'workers' ? theme.colors.primary.main : theme.colors.neutral[400]} 
+                />
+                <Text style={[
+                  styles.tabText,
+                  { color: activeTab === 'workers' ? theme.colors.primary.main : theme.colors.neutral[400] }
+                ]}>
+                  Workers
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </Card>
+        </View>
+
+        {loading && (
+          <View style={styles.loadingOverlay}>
+            <Card variant="glass" style={styles.loadingCard} floating={false}>
               <MaterialIcons name="hourglass-empty" size={48} color={theme.colors.neutral[400]} />
               <Text style={styles.loadingText}>Loading...</Text>
-            </View>
-          ) : (
-            activeTab === 'jobs' ? jobs.map((item) => (
-              <ItemCard 
-                key={item.id} 
-                item={item} 
-                type="job"
-              />
-            )) : workers.map((item) => (
-              <ItemCard 
-                key={item.id} 
-                item={item} 
-                type="worker"
-              />
-            ))
-          )}
-        </ScrollView>
-      </Animated.View>
-    </SafeAreaView>
+            </Card>
+          </View>
+        )}
+      </View>
+    </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.primary.main,
-  },
-  header: {
-    padding: theme.spacing.lg,
-    paddingBottom: theme.spacing.md,
-    zIndex: 1,
-  },
-  headerTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: theme.spacing.md,
-  },
-  backButton: {
-    marginRight: theme.spacing.md,
-    padding: theme.spacing.xs,
-  },
-  title: {
-    fontSize: theme.typography.size.xxl,
-    fontWeight: 'bold',
-    color: theme.colors.primary.contrast,
-  },
-  tabContainer: {
-    flexDirection: 'row',
-    backgroundColor: theme.colors.primary.light,
-    borderRadius: theme.borderRadius.full,
-    padding: theme.spacing.xs,
-    position: 'relative',
-  },
-  tabIndicator: {
-    position: 'absolute',
-    width: (width - 40) / 2,
-    height: '100%',
-    backgroundColor: theme.colors.accent.main,
-    borderRadius: theme.borderRadius.full,
-  },
-  tab: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: theme.spacing.sm,
-    gap: theme.spacing.xs,
-    zIndex: 1,
-  },
-  tabText: {
-    fontSize: theme.typography.size.md,
-    fontWeight: '600',
+    backgroundColor: theme.colors.neutral[100],
   },
   mapWrapper: {
     flex: 1,
@@ -280,40 +213,59 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
   },
-  bottomSheet: {
+  tabsFloatingContainer: {
     position: 'absolute',
-    bottom: 0,
+    top: Platform.OS === 'ios' ? 140 : 110,
     left: 0,
     right: 0,
-    backgroundColor: theme.colors.neutral[100],
-    borderTopLeftRadius: theme.borderRadius.xl,
-    borderTopRightRadius: theme.borderRadius.xl,
-    ...theme.shadows.lg,
-  },
-  bottomSheetHandle: {
     alignItems: 'center',
-    paddingVertical: theme.spacing.sm,
+    zIndex: 90,
   },
-  handle: {
-    width: 40,
-    height: 4,
-    backgroundColor: theme.colors.neutral[300],
-    borderRadius: theme.borderRadius.full,
+  tabsCard: {
+    width: width - 48,
+    margin: 0,
+    marginHorizontal: 24,
+    padding: 0,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
   },
-  cardsContainer: {
+  tabContainer: {
+    flexDirection: 'row',
+    height: 56,
+    position: 'relative',
+    justifyContent: 'space-between',
+  },
+  tabIndicator: {
+    position: 'absolute',
+    width: (width - 48) / 2,
+    height: '100%',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    borderRadius: theme.borderRadius.lg,
+    ...theme.shadows.sm,
+    zIndex: 0,
+  },
+  tab: {
     flex: 1,
-    padding: theme.spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: theme.spacing.sm,
+    zIndex: 2,
+    height: '100%',
+  },
+  tabText: {
+    marginLeft: theme.spacing.xs,
+    fontSize: theme.typography.size.md,
+    fontWeight: '600',
   },
   card: {
-    backgroundColor: theme.colors.neutral[100],
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.lg,
-    marginBottom: theme.spacing.md,
-    ...theme.shadows.md,
+    marginHorizontal: theme.spacing.md,
+    marginVertical: theme.spacing.xs,
+    padding: theme.spacing.md,
   },
   selectedCard: {
-    borderColor: theme.colors.accent.main,
-    borderWidth: 2,
+    borderColor: theme.colors.primary.main,
+    borderWidth: 1,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -330,23 +282,23 @@ const styles = StyleSheet.create({
   },
   badge: {
     paddingHorizontal: theme.spacing.sm,
-    paddingVertical: theme.spacing.xxs,
-    borderRadius: theme.borderRadius.full,
+    paddingVertical: theme.spacing.xs,
+    borderRadius: theme.borderRadius.md,
   },
   badgeText: {
-    color: theme.colors.primary.contrast,
+    color: theme.colors.neutral[100],
     fontSize: theme.typography.size.sm,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   cardDescription: {
-    fontSize: theme.typography.size.md,
-    color: theme.colors.neutral[600],
+    fontSize: theme.typography.size.sm,
+    color: theme.colors.neutral[700],
     marginBottom: theme.spacing.md,
   },
   cardFooter: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
   footerDetail: {
     flexDirection: 'row',
@@ -357,15 +309,21 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.size.sm,
     color: theme.colors.neutral[600],
   },
-  centerContent: {
-    flex: 1,
+  loadingOverlay: {
+    ...StyleSheet.absoluteFill,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: theme.spacing.xl,
+    zIndex: 100,
+  },
+  loadingCard: {
+    width: 200,
+    height: 200,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   loadingText: {
     marginTop: theme.spacing.md,
-    fontSize: theme.typography.size.md,
-    color: theme.colors.neutral[600],
+    fontSize: theme.typography.size.lg,
+    color: theme.colors.neutral[700],
   },
 }); 

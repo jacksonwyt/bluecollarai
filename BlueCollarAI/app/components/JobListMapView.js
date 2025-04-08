@@ -1,18 +1,21 @@
 import { View, Text, Animated, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { MaterialIcons } from '@expo/vector-icons';
 import { theme } from '../theme';
 import JobMap from './JobMap';
 import Card from './ui/Card.js';
 
-const { height } = Dimensions.get('window');
-const BOTTOM_SHEET_MIN_HEIGHT = 100;
-const BOTTOM_SHEET_MAX_HEIGHT = height * 0.8;
+const { height, width } = Dimensions.get('window');
+const BOTTOM_SHEET_MIN_HEIGHT = 80;
+const BOTTOM_SHEET_MAX_HEIGHT = height * 0.6;
 
 export const JobListItem = ({ job, isSelected, onPress }) => (
   <Card 
     style={[styles.jobCard, isSelected && styles.selectedJobCard]} 
     onPress={onPress}
+    variant="glass"
+    noPadding={false}
+    floating={false}
   >
     <View style={styles.jobHeader}>
       <View>
@@ -44,23 +47,28 @@ export const JobListItem = ({ job, isSelected, onPress }) => (
 const JobListMapView = ({ jobs, selectedJob, onJobSelect }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const animatedValue = useRef(new Animated.Value(BOTTOM_SHEET_MIN_HEIGHT)).current;
+  
+  const handleJobSelect = (job) => {
+    onJobSelect?.(job);
+  };
 
   const toggleBottomSheet = () => {
     const toValue = isExpanded ? BOTTOM_SHEET_MIN_HEIGHT : BOTTOM_SHEET_MAX_HEIGHT;
     
-    Animated.spring(animatedValue, {
+    Animated.timing(animatedValue, {
       toValue,
-      tension: 50,
-      friction: 7,
+      duration: 300,
       useNativeDriver: false,
     }).start();
     
     setIsExpanded(!isExpanded);
   };
-
-  const handleJobSelect = (job) => {
-    onJobSelect?.(job);
-  };
+  
+  useEffect(() => {
+    if (selectedJob && isExpanded) {
+      toggleBottomSheet();
+    }
+  }, [selectedJob]);
 
   return (
     <View style={styles.container}>
@@ -71,12 +79,13 @@ const JobListMapView = ({ jobs, selectedJob, onJobSelect }) => {
       />
       
       <Animated.View style={[styles.bottomSheet, { height: animatedValue }]}>
-        <Card variant="glass" style={styles.bottomSheetContent}>
+        <Card variant="glass" style={styles.bottomSheetContent} floating={false}>
           <View style={styles.handle} />
           
           <TouchableOpacity 
             style={styles.toggleButton}
             onPress={toggleBottomSheet}
+            activeOpacity={0.7}
           >
             <MaterialIcons
               name={isExpanded ? 'keyboard-arrow-down' : 'keyboard-arrow-up'}
@@ -97,9 +106,29 @@ const JobListMapView = ({ jobs, selectedJob, onJobSelect }) => {
             )}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.listContent}
+            decelerationRate="normal"
+            removeClippedSubviews={true}
+            initialNumToRender={5}
+            maxToRenderPerBatch={5}
           />
         </Card>
       </Animated.View>
+      
+      {selectedJob && (
+        <View style={styles.floatingDetail}>
+          <Card 
+            variant="glass" 
+            style={styles.floatingCard}
+            floating={false}
+          >
+            <View style={styles.floatingCardHeader}>
+              <Text style={styles.floatingCardTitle}>{selectedJob.title}</Text>
+              <Text style={styles.floatingCardBudget}>${selectedJob.budget}</Text>
+            </View>
+            <Text style={styles.floatingCardLocation}>{selectedJob.location}</Text>
+          </Card>
+        </View>
+      )}
     </View>
   );
 };
@@ -120,6 +149,9 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: theme.borderRadius.xl,
     borderTopRightRadius: theme.borderRadius.xl,
     padding: 0,
+    overflow: 'hidden',
+    borderWidth: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.85)',
   },
   handle: {
     width: 40,
@@ -135,13 +167,17 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: theme.spacing.md,
+    paddingBottom: theme.spacing.xl * 2,
   },
   jobCard: {
     marginBottom: theme.spacing.sm,
+    borderRadius: theme.borderRadius.lg,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
   },
   selectedJobCard: {
     borderColor: theme.colors.primary.main,
-    borderWidth: 2,
+    borderWidth: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
   },
   jobHeader: {
     flexDirection: 'row',
@@ -175,6 +211,40 @@ const styles = StyleSheet.create({
   },
   jobDetailText: {
     marginLeft: theme.spacing.xs,
+    fontSize: theme.typography.size.sm,
+    color: theme.colors.neutral[600],
+  },
+  floatingDetail: {
+    position: 'absolute',
+    top: theme.spacing.lg,
+    left: theme.spacing.lg,
+    right: theme.spacing.lg,
+    zIndex: 10,
+  },
+  floatingCard: {
+    padding: theme.spacing.md,
+    borderRadius: theme.borderRadius.lg,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    ...theme.shadows.lg,
+  },
+  floatingCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.xs,
+  },
+  floatingCardTitle: {
+    fontSize: theme.typography.size.lg,
+    fontWeight: '700',
+    color: theme.colors.neutral[900],
+    flex: 1,
+  },
+  floatingCardBudget: {
+    fontSize: theme.typography.size.lg,
+    fontWeight: '700',
+    color: theme.colors.success.main,
+  },
+  floatingCardLocation: {
     fontSize: theme.typography.size.sm,
     color: theme.colors.neutral[600],
   },

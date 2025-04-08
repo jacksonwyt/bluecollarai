@@ -139,21 +139,6 @@ export function TabsLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="payment"
-        options={{
-          title: 'Payments',
-          tabBarLabel: 'Payments',
-          tabBarIcon: ({ color, size, focused }) => (
-            <TabBarIcon 
-              name={focused ? "card" : "card-outline"} 
-              size={size} 
-              color={color} 
-              focused={focused} 
-            />
-          ),
-        }}
-      />
     </Tabs>
   );
 }
